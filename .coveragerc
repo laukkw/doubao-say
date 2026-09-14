@@ -1,0 +1,13 @@
+[run]
+branch = True
+source = doubao_input
+
+[report]
+# This is an honest whole-package branch-coverage floor. GTK/WebKit and physical
+# device paths remain included; raise it as those seams become testable.
+exclude_also =
+    if __name__ == .__main__.:
+    pragma: no cover
+show_missing = True
+skip_covered = True
+fail_under = 55

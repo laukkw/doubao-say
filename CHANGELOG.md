@@ -1,0 +1,68 @@
+# Changelog
+
+## 1.0.0 — release candidate
+
+- Added one `install.sh` entry point for source checkouts and release archives, with explicit Arch/Omarchy dependency detection, confirmation and read-only checks.
+- Replaced the recording overlay's large update arrow with a compact red status dot.
+- Update caches are scoped to the installed application version, preventing stale development-version notifications after an upgrade, downgrade or version reset.
+- Normal recording completion drains the final sample-aligned PipeWire audio block; cancellation discards it. Drain failures retain partial text instead of submitting it.
+- Recognition safety timeouts retain partial text for review and never automatically paste or press Enter.
+- Login completion is scoped to its originating attempt; closing/signing out invalidates stale callbacks. Credential deletion failures are reported instead of claiming success.
+- App and plugin archives now build from the same Git-visible source snapshot as publication checks, excluding ignored local source files.
+- Trigger-key capture now saves and activates a detected key immediately; timeout guidance offers the reliable list-based fallback.
+- Settings now state explicitly that pressing the active trigger twice sends Enter without dictation, including the submit/command warning.
+- Physical key capture now accepts and labels ordinary keyboard keys instead of silently discarding everything outside the preset list; Escape remains cancel.
+- Trigger setup now uses one mutually exclusive dropdown: preset selections apply immediately, while its final Record a shortcut item captures a custom chord (for example Ctrl + Alt + Space) that completely replaces the preset. Removed the separate Record and Use buttons; existing single-key settings migrate unchanged.
+- Shortcut summaries use familiar symbols (for example `⌃ + ⌥ + Space`) with visible separators, without brackets or Linux key-code numbers.
+- Modifier keys are logical triggers in settings and recorded shortcuts: Ctrl, Shift, Alt and Meta never display a left/right qualifier, and either physical side works. Shortcut rows no longer carry a redundant Custom label.
+- Shortcut recording now shows the accumulated keys live in a dedicated field as each key is pressed, before saving on release.
+- Added optional OpenAI-compatible voice polishing on the Trigger page: private API-key storage, editable/restorable built-in prompt, endpoint test, cancellable original-text fallback, and a five-second best-effort deadline.
+- Voice polishing is an explicit Experimental switch. Stable text after 1.2 seconds of silence starts a provisional whole-recording preview; resumed recognized speech invalidates stale work, while microphone noise does not. A preview never ends recording or pastes. Tap mode finishes only on another tap; hold mode finishes on release, and then the final text is pasted once.
+- The settings recommend DeepSeek Flash and explain that deep thinking should be disabled for low latency. Official DeepSeek requests ask for non-thinking mode; verified provider/model pairs use their documented controls.
+- Streaming polishing now rejects abrupt EOF and non-success finish reasons rather than accepting partial generated text; errors safely fall back to the original transcript.
+- Added a rate-limited stable-release check shared by app and plugin installs. A newer semantic version shows a red control-center button with a version tooltip and opens an allowlisted GitHub Release page; it never downloads or installs automatically.
+- Setup navigation wraps into rows in narrow/tiled windows; long action labels wrap instead of forcing horizontal clipping. Added real-GTK English/Chinese layout checks at 400, 609 and 680 px.
+- Settings-window close now cancels the shared trigger picker, without removed legacy fields.
+- TriggerController owns keyboard listeners, gesture state, capture timeouts and stale-event rejection.
+- SetupSession owns microphone/voice rehearsals and appearance timers; old callbacks cannot hide a new session.
+- Paste and Enter use a single background input worker with main-loop completions, cancellation checks and virtual-key cleanup.
+- Settings application restores previous files/runtime on handled failures; rollback failures are surfaced explicitly.
+- Added regression tests and isolated real-GTK wiring checks. Physical input acceptance is still required before deployment.
+
+- Dedicated trigger-key setup step shared with Settings: one visible active
+  shortcut, immediately applied presets, and an in-list custom recorder.
+- Key selection handles Escape, unsupported keys and keyboard-access failures;
+  leaving the guide step or closing preferences cancels pending capture.
+- Chinese preferences show 豆包说设置 in both window and page headings.
+
+- Independent Doubao Say identity, bun/waveform icon and Home control center.
+- Single in-memory recent-result recovery: copy, clear and target-selected retry.
+- Window identity checks before paste/Enter; cancelled timers cannot send input.
+- Empty/failed recognition never schedules a pending Enter; partial text retained.
+- Eight-second hardware key capture, cancellation, Escape and gesture safety guards.
+- PipeWire microphone selection, appearance preview and reduced waveform updates.
+- Grouped settings, immediate language-window rebuild and sign-out confirmation.
+- Allowlisted diagnostic preview/copy without credentials or transcript contents.
+- Guided setup completion requires successful microphone and voice checks.
+- Product identifiers and installation paths are consistently named Doubao Say.
+
+Public distribution, clean-desktop acceptance and upstream licensing clearance
+remain separate gates. The brand name has not been cleared for trademark use.
+
+### Features
+
+- English-first four-step setup, Chinese and System language options.
+- Configurable Fn/Alt/function-key tap, hold and double-tap gestures.
+- Bottom live-transcript waveform and a single-process system tray entry.
+- Independent app and Omarchy service bundles with offline dependency wheels.
+
+### Engineering and security
+
+- Atomic owner-only credential saves, validated reads and visible save failures.
+- Removed transcript excerpts and account/device identifiers from normal logs.
+- Explicit microphone RMS callbacks replace application method monkey patches.
+- Bundle verification rejects unlisted files and symlinks at all depths.
+- Preserve NOTICE in releases; contributor/security/architecture guides and
+  regression tests added. See SECURITY.md and NOTICE for unresolved release gates.
+
+This is not a published release; the configured GitHub remote has not been pushed.

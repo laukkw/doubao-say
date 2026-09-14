@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doubao-say"
+version = "1.0.0"
+description = "Global push-to-hold voice input for Linux/Wayland, backed by Doubao ASR"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Doubao Say contributors" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "websockets>=12",
+    "sounddevice>=0.4.6",
+    "evdev>=1.4",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/quanru/doubao-say"
+"Issues" = "https://github.com/quanru/doubao-say/issues"
+"Upstream" = "https://github.com/wurong98/doubao-input-for-linux"
+
+[project.scripts]
+doubao-say = "doubao_input.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"doubao_input.login" = ["resources/*.js"]
+"doubao_input" = ["resources/*.png"]
+"doubao_input.ui" = ["*.svg"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+# Start with correctness checks; adopt formatting/style separately from fixes.
+select = ["E9", "F63", "F7", "F82"]

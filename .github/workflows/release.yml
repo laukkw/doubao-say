@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify release source
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require tag and product versions to match
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = push ]; then
+            python3 packaging/version_check.py --tag "${GITHUB_REF_NAME}"
+          else
+            python3 packaging/version_check.py
+          fi
+      - name: Install test environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-gi python3-cairo gir1.2-gtk-4.0 python3-venv libportaudio2
+          /usr/bin/python3 -m venv --system-site-packages .venv
+          .venv/bin/pip install -r packaging/runtime-requirements.txt -r requirements-dev.txt
+      - name: Run release gates
+        run: |
+          make check
+          make coverage
+      - name: Download pinned secret scanner
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 --output gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz' | sha256sum --check
+          tar -xzf gitleaks.tar.gz gitleaks
+      - name: Scan history and checkout
+        run: |
+          "$RUNNER_TEMP/gitleaks" git . --log-opts=--all --redact --no-banner
+          "$RUNNER_TEMP/gitleaks" dir . --redact --no-banner
+
+  build:
+    name: Build / Python ${{ matrix.python }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Build offline app and plugin archives
+        run: |
+          python -m pip wheel --wheel-dir dist/wheelhouse -r packaging/runtime-requirements.txt
+          python packaging/build-release.py
+      - name: Verify archive checksums
+        working-directory: dist
+        run: sha256sum --check SHA256SUMS
+      - name: Upload archives
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-python-${{ matrix.python }}
+          path: dist/doubao-say-*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke-install:
+    name: Install built Python 3.12 archive
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-python-3.12
+          path: dist
+      - name: Install desktop runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gir1.2-gtk-4.0 gir1.2-webkit-6.0 gobject-introspection \
+            libgirepository1.0-dev libgtk-4-dev libportaudio2 libwayland-dev \
+            meson ninja-build pipewire-bin python3-cairo python3-gi python3-venv \
+            wayland-protocols wl-clipboard
+          layer_dir="$RUNNER_TEMP/gtk4-layer-shell"
+          mkdir -p "$layer_dir"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$layer_dir/source.tar.gz" \
+            https://github.com/wmww/gtk4-layer-shell/archive/536ff516ed68b9bb34afc4c07f942a54b2b4b03f.tar.gz
+          echo 'f4c4fd455f5605c7b93b305b6be28990f0f7170968fb2714bf362477f918c4bc  source.tar.gz' \
+            | (cd "$layer_dir" && sha256sum --check)
+          tar -xzf "$layer_dir/source.tar.gz" -C "$layer_dir"
+          meson setup "$layer_dir/build" \
+            "$layer_dir/gtk4-layer-shell-536ff516ed68b9bb34afc4c07f942a54b2b4b03f" \
+            --prefix=/usr -Ddocs=false -Dexamples=false -Dtests=false -Dvapi=false
+          sudo meson install -C "$layer_dir/build"
+      - name: Install, upgrade and uninstall in isolated user directories
+        working-directory: dist
+        run: |
+          app_archive=(doubao-say-*-app-linux-*.tar.gz)
+          test "${#app_archive[@]}" -eq 1
+          /usr/bin/python3 ../tests/manual_clean_install.py "${app_archive[0]}"
+
+  publish:
+    name: Publish GitHub release
+    if: github.event_name == 'push'
+    needs: [build, smoke-install]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-python-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: release-assets
+        run: sha256sum doubao-say-*.tar.gz > SHA256SUMS
+      - name: Publish immutable tag assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" release-assets/* \
+            --verify-tag --title "Doubao Say ${GITHUB_REF_NAME#v}" --generate-notes

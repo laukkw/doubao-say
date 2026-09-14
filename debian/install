@@ -1,0 +1,2 @@
+debian/doubao-say.service /usr/lib/systemd/user/
+debian/doubao-say.desktop /usr/share/applications/

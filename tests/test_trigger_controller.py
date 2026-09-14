@@ -1,0 +1,193 @@
+from dataclasses import replace
+from unittest import TestCase
+from unittest.mock import Mock
+
+from doubao_input.settings import Settings
+from doubao_input.trigger.controller import TriggerController
+
+
+class TriggerControllerTest(TestCase):
+    def setUp(self):
+        self.timers = []
+        def schedule(ms, callback):
+            self.timers.append((ms, callback))
+            return len(self.timers)
+        self.readers = []
+        self.available = True
+        def reader(**kwargs):
+            value = Mock()
+            value.callbacks = kwargs
+            value.start.return_value = self.available
+            self.readers.append(value)
+            return value
+        self.start, self.stop, self.toggle, self.enter, self.cancel = [Mock() for _ in range(5)]
+        self.control = TriggerController(reader, schedule, Mock(), start=self.start, stop=self.stop,
+            toggle=self.toggle, enter=self.enter, cancel_input=self.cancel,
+            debug_edge=Mock(return_value=False), error=Mock())
+        self.settings = Settings(doubao_key=100)
+        self.control.configure(self.settings)
+
+    def edge(self, code, pressed):
+        self.readers[-1].callbacks["on_key"](code, pressed)
+
+    def test_capture_only_returns_after_release_and_restores_listener(self):
+        result = Mock()
+        self.control.begin_capture(result)
+        self.edge(100, True)
+        result.assert_not_called()
+        self.toggle.assert_not_called()
+        self.edge(100, False)
+        result.assert_called_once_with((56, ()))
+        self.assertFalse(self.control.capturing)
+        self.assertEqual(self.readers[-1].callbacks["key_codes"], {1, 56, 100})
+
+    def test_records_modifier_chord_after_all_keys_are_released(self):
+        result = Mock()
+        self.control.begin_capture(result)
+        for code in (29, 56, 57):
+            self.edge(code, True)
+        self.edge(57, False)
+        result.assert_not_called()
+        self.edge(56, False)
+        self.edge(29, False)
+        result.assert_called_once_with((57, (29, 56)))
+
+    def test_capture_previews_accumulated_keys_on_each_press(self):
+        result, preview = Mock(), Mock()
+        self.control.begin_capture(result, preview)
+        self.edge(97, True)
+        preview.assert_called_with((29, ()))
+        self.edge(54, True)
+        preview.assert_called_with((42, (29,)))
+        self.edge(18, True)
+        preview.assert_called_with((18, (29, 42)))
+        result.assert_not_called()
+
+    def test_right_ctrl_capture_is_canonical_ctrl(self):
+        result = Mock()
+        self.control.begin_capture(result)
+        for code in (97, 57):
+            self.edge(code, True)
+        self.edge(57, False)
+        self.edge(97, False)
+        result.assert_called_once_with((57, (29,)))
+
+    def test_ctrl_preset_accepts_left_or_right_physical_key(self):
+        self.control.configure(replace(self.settings, doubao_key=29))
+        self.assertEqual(self.readers[-1].callbacks["key_codes"], {1, 29, 97})
+        for code in (29, 97):
+            with self.subTest(code=code):
+                self.edge(code, True)
+                self.timers[-1][1]()
+                self.edge(code, False)
+        self.assertEqual(self.start.call_count, 2)
+        self.assertEqual(self.stop.call_count, 2)
+
+    def test_ctrl_modifier_accepts_either_physical_side(self):
+        self.control.configure(replace(self.settings, doubao_key=57,
+                                       doubao_modifiers=(29,)))
+        for ctrl in (29, 97):
+            with self.subTest(ctrl=ctrl):
+                self.edge(ctrl, True)
+                self.edge(57, True)
+                self.timers[-1][1]()
+                self.edge(57, False)
+                self.edge(ctrl, False)
+        self.assertEqual(self.start.call_count, 2)
+        self.assertEqual(self.stop.call_count, 2)
+
+    def test_every_modifier_preset_accepts_either_physical_side(self):
+        for left, right in ((29, 97), (42, 54), (56, 100), (125, 126)):
+            with self.subTest(left=left, right=right):
+                start_count = self.start.call_count
+                stop_count = self.stop.call_count
+                self.control.configure(replace(self.settings, doubao_key=left))
+                for code in (left, right):
+                    self.edge(code, True)
+                    self.timers[-1][1]()
+                    self.edge(code, False)
+                self.assertEqual(self.start.call_count, start_count + 2)
+                self.assertEqual(self.stop.call_count, stop_count + 2)
+
+    def test_chord_requires_modifiers_before_primary_key(self):
+        self.control.configure(replace(self.settings, doubao_key=57,
+                                       doubao_modifiers=(29, 56)))
+        self.edge(57, True)
+        self.assertFalse(self.control.busy)
+        self.edge(57, False)
+        self.edge(29, True)
+        self.edge(56, True)
+        self.edge(57, True)
+        self.assertTrue(self.control.busy)
+        self.timers[-1][1]()
+        self.start.assert_called_once()
+        self.edge(57, False)
+        self.stop.assert_called_once()
+
+    def test_escape_capture_returns_none_without_cancel_dictation(self):
+        result = Mock()
+        self.control.begin_capture(result)
+        self.edge(1, True)
+        self.edge(1, False)
+        result.assert_called_once_with(None)
+        self.cancel.assert_not_called()
+
+    def test_old_reader_edges_are_ignored_after_reconfigure(self):
+        old_edge = self.readers[-1].callbacks["on_key"]
+        self.control.configure(replace(self.settings, doubao_key=464))
+        old_edge(100, True)
+        self.assertFalse(self.control.busy)
+
+    def test_strict_failure_preserves_previous_listener(self):
+        original = self.readers[-1]
+        self.available = False
+        with self.assertRaises(ValueError):
+            self.control.configure(replace(self.settings, doubao_key=464), strict=True)
+        original.stop.assert_not_called()
+        self.readers[-1].stop.assert_called_once()
+        original.callbacks["on_key"](100, True)
+        self.assertTrue(self.control.busy)
+
+    def test_unrelated_preferences_do_not_restart_keyboard_listener(self):
+        original = self.readers[-1]
+        self.control.configure(replace(self.settings, language="zh_CN"), strict=True)
+        self.assertEqual(len(self.readers), 1)
+        original.stop.assert_not_called()
+
+    def test_failed_capture_does_not_leave_dictation_paused(self):
+        self.available = False
+        with self.assertRaises(ValueError):
+            self.control.begin_capture(Mock())
+        self.assertFalse(self.control.capturing)
+
+    def test_cancel_capture_invalidates_timeout_for_next_capture(self):
+        first, second = Mock(), Mock()
+        self.control.begin_capture(first)
+        old_timer = self.timers[-1][1]
+        self.control.end_capture()
+        self.control.begin_capture(second)
+        old_timer()
+        self.assertTrue(self.control.capturing)
+        first.assert_not_called()
+        second.assert_not_called()
+        self.timers[-1][1]()
+        second.assert_called_once_with(None)
+
+    def test_close_invalidates_queued_edges_and_capture_timer(self):
+        result = Mock()
+        self.control.begin_capture(result)
+        old_reader, old_timer = self.readers[-1], self.timers[-1][1]
+        self.control.close()
+        old_reader.callbacks["on_key"](100, False)
+        old_timer()
+        result.assert_not_called()
+        self.assertFalse(self.control.capturing)
+
+    def test_hold_release_and_escape_preserve_gesture_behavior(self):
+        self.edge(100, True)
+        self.timers[-1][1]()
+        self.start.assert_called_once()
+        self.edge(100, False)
+        self.stop.assert_called_once()
+        self.edge(1, True)
+        self.cancel.assert_called_once()

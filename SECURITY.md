@@ -1,0 +1,50 @@
+# Security and privacy
+
+This client uses an unofficial Doubao web protocol and requests broad keyboard
+device access for global triggers. Use a normal user, never root. Review input
+group membership and `/dev/uinput` permissions before installation.
+
+Recordings are sent to Doubao for recognition; the microphone-only check stays
+local. The application does not intentionally retain recordings or transcripts
+on disk. The clipboard and target application may retain text. Older development
+logs can contain transcript excerpts: never attach them without review.
+
+When optional voice polishing is enabled, recognized text is sent to the
+OpenAI-compatible endpoint selected by the user. This includes provisional text
+submitted after a pause while recording is still active. The endpoint operator's
+retention, training and privacy terms apply. Doubao Say does not log the text or
+include the polishing API key in diagnostics.
+
+The application checks the fixed public GitHub Releases endpoint at most once
+every 24 hours. GitHub receives normal HTTPS connection metadata. The local
+owner-only cache contains only the check time and public release tag. The check
+does not send settings, account data, transcripts or a device identifier, and it
+does not download or install an update.
+
+Sign-in cookies are stored locally, not encrypted. New saves are atomic and mode
+0600; loading valid older credentials restricts their permissions. Anyone with
+access to your account or root privileges may still read them. Uninstall preserves
+credentials, settings and runtime deliberately; it is not account revocation.
+
+## Reporting a vulnerability
+
+Report bugs and security concerns through
+[Doubao Say Issues](https://github.com/quanru/doubao-say/issues).
+Include the affected version, sanitized reproduction steps and impact. Remove
+API keys, cookies, personal transcripts and device identifiers before posting.
+For a vulnerability, start with a high-level description without exploit details
+or sensitive attachments so the maintainer can coordinate follow-up.
+This link becomes available to other users when the repository is published.
+
+## Release limits
+
+Local bundles are unsigned. Their file manifests/SHA256 sums detect changes only
+when obtained through a trusted channel; they do not establish publisher identity.
+Run `make marketplace-check` with Gitleaks on PATH to repeat a redacted scan of
+all locally available Git refs and the Git-visible working tree. It requires a
+full clone. Scanning is not proof that all sensitive information is absent;
+review historical screenshots and personal data separately before publication.
+No independent penetration test or complete dependency license audit has been
+completed. These remain release gates, together with the
+upstream licensing clarification documented in NOTICE and clean-system installation
+and live desktop acceptance described in packaging/INSTALL.md.

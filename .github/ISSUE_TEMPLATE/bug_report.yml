@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a reproducible application or installation problem
+body:
+  - type: markdown
+    attributes:
+      value: "Never attach API keys, cookies, login files, personal transcripts or unreviewed logs. For security concerns, start with a high-level description; see SECURITY.md."
+  - type: input
+    id: version
+    attributes:
+      label: Version and installation method
+      placeholder: "1.0.0, app archive or Omarchy plugin"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Distribution, Python version, compositor, keyboard and microphone backend.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction, expected and actual behavior
+      description: Use a non-sensitive sample sentence and a plain text editor.
+    validations:
+      required: true

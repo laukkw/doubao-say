@@ -1,0 +1,51 @@
+doubao-say (1.0.2-1) noble; urgency=medium
+
+  * Logo: replaced white-backed assets with transparent-background
+    versions.  Previous logo.png / logo-128.png were RGBA but
+    every corner pixel had alpha=255 (opaque white), which made
+    the launcher icon look like a square badge and the README
+    image show a white frame around the avatar.  The new avatar
+    (697×736 RGBA, corners alpha=0) is genuinely transparent so
+    the hicolor launcher badge blends with the desktop background
+    and the README image sits flush on the page.
+
+ -- doubao-say contributors <code-dream@qq.com>  Sun, 21 Jun 2026 21:50:00 +0800
+
+doubao-say (1.0.1-1) noble; urgency=medium
+
+  * UI: PttOverlay rounded panel + breathing alpha + glint flash.
+    - Rounded 18px corners via CSS provider.
+    - Background alpha breathes 0.78~0.98 over 2.4s (opacity, not
+      saturation — keeps wallpaper visible without eye strain).
+    - Each new ASR word fires a 220ms opacity flash to 1.0 then
+      400ms decay back to the breathing baseline.  Causal feedback
+      makes the overlay feel alive without ever being noisy.
+    - High-contrast white bold text is never animated, so reading
+      stays stable while the edge glows.
+  * UI: layout bug fixes
+    - "你好" was wrapping to 2 lines (one char per line) — locked
+      the label to a hard 360px width via set_size_request +
+      set_width_chars(14) so Pango has a real break-width before
+      the first size allocation.
+    - Text appeared shifted right — box changed from HORIZONTAL
+      to VERTICAL so the label is centered under the wave, not
+      jammed against it.
+    - "整行变 …" — removed set_ellipsize(START), which conflicts
+      with wrap + max_width_chars + CJK WORD-wrap in GTK 4 /
+      Pango and turns the whole line into a single ellipsis.
+      Truncation is now handled in Python by text[-600:].
+  * Packaging: .desktop Icon= uses absolute path to bypass
+    GNOME Shell's per-session icon-theme cache.
+  * Packaging: .deb installs wrapper, systemd user service, logo
+    to hicolor theme, and postinst bootstraps a per-user venv
+    with pure-Python deps (websockets, sounddevice, evdev).
+
+ -- doubao-say contributors <code-dream@qq.com>  Sun, 21 Jun 2026 21:05:00 +0800
+
+doubao-say (1.0.0-1) noble; urgency=medium
+
+  * Initial release.
+  * Push-to-hold voice input backed by Doubao ASR.
+  * Vendor logic from doubao-murmur (MIT); see /usr/share/doc/doubao-say/NOTICE.
+
+ -- doubao-say contributors <code-dream@qq.com>  Sat, 21 Jun 2026 18:30:00 +0800

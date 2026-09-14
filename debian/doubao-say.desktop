@@ -1,0 +1,22 @@
+[Desktop Entry]
+Type=Application
+Name=豆包说
+Name[en]=Doubao Say
+GenericName=Voice Input Method
+Comment=使用自定义触发键说话并粘贴到当前输入框
+Comment[en]=Speak with a configurable trigger and paste into the active input
+Exec=doubao-say
+# Use absolute path (not theme name) so the launcher doesn't depend
+# on the icon-theme cache lookup, which GNOME Shell caches per-session
+# and won't refresh until logout/login.
+Icon=/usr/share/icons/hicolor/128x128/apps/doubao-say.png
+Terminal=false
+Categories=Utility;TextTools;AudioVideo;
+StartupNotify=false
+Keywords=voice;speech;input;asr;doubao;
+Actions=show-control;
+
+[Desktop Action show-control]
+Name=显示控制窗口
+Name[en]=Show Control Window
+Exec=doubao-say --show

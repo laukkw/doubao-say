@@ -1,0 +1,38 @@
+# Attribution and release-license status
+
+This working tree is based on wurong98/doubao-input-for-linux:
+https://github.com/wurong98/doubao-input-for-linux
+Base commit: 98ce35753c8d8743114d86ae440deace80aa43b1.
+Doubao Say starts a separate Git history from this derived working tree.
+This does not imply that the inherited code was originally authored here.
+The direct upstream began its own history at
+58383cd67566be506608445b27f6190659759f79 and copied the doubao-murmur
+Linux components in d50f974dfae48489aebcaf73f3b99fd9021b68db;
+that import did not preserve doubao-murmur's original Git history.
+The inherited NOTICE attributes the ASR/login components to doubao-murmur.
+Source comparison establishes the imported doubao-murmur revision as
+50d16e0b85d017c01f9a37e9b7a75f7e498a6457: seven core Python modules are
+identical after the package-name rewrite, login_window.py differs only in the
+documented Linux resource-path adaptation, and both injected JavaScript files
+match that revision's Resources directory byte for byte.
+
+Upstream: https://github.com/lilong7676/doubao-murmur
+Its LICENSE at imported revision 50d16e0b85d017c01f9a37e9b7a75f7e498a6457
+states:
+MIT License, Copyright (c) 2026 lilong7676.
+That copyright and the full MIT permission text are retained in LICENSE.
+
+The imported revision's README also contains a non-commercial-use statement in
+its disclaimer. Doubao Say relies on the explicit MIT grant in the upstream
+LICENSE for the inherited code. That software license does not grant access to,
+or permission to use, Doubao services; users and distributors remain responsible
+for complying with applicable service terms. This notice does not supply legal
+advice.
+
+Local changes include GTK onboarding/settings/tray, gesture handling, waveform
+presentation, microphone capture, per-session transport cancellation, credential
+storage and offline packaging. This product uses Doubao cloud recognition only;
+it does not bundle a local speech recognition engine.
+
+Distributions must retain LICENSE and NOTICE. Bundled dependency wheels retain
+their embedded license files; see packaging/DEPENDENCIES.md in the source tree.
