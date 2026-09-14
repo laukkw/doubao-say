@@ -90,6 +90,7 @@ settings.json
 /recordings/
 /screenshots/
 /backups/
+/.midscene-omarchy/
 *.bak
 *.orig
 *.rej
