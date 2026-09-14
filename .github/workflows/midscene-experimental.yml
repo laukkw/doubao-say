@@ -4,8 +4,9 @@ on:
   push:
     branches: [ci/midscene-e2e]
     paths:
-      - ".github/workflows/midscene-experimental.yml"
-      - "tests/midscene/**"
+      # The VM install is deliberately expensive. Push this marker only when
+      # the pinned Omarchy ISO or installer harness needs to be revalidated.
+      - "tests/midscene/.rebuild-omarchy-vm"
   workflow_dispatch:
 
 permissions:
@@ -36,4 +37,3 @@ jobs:
           path: .midscene-omarchy/omarchy-iso/test-runs/**/runs/**
           if-no-files-found: warn
           retention-days: 3
-
