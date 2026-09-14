@@ -39,6 +39,13 @@ git -C "$HARNESS_DIR" remote add origin https://github.com/omacom/omarchy-iso.gi
 git -C "$HARNESS_DIR" fetch --quiet --depth 1 origin "$ISO_HARNESS_SHA"
 git -C "$HARNESS_DIR" checkout --quiet --detach FETCH_HEAD
 
+# Omarchy 4.0.3's welcome tagline says "Agentic Linux" while this pinned
+# harness revision still waits for the former "Opinionated" tagline. Keep the
+# test on the official ISO and change only the OCR readiness marker.
+grep -q 'wait_for_screen "Opinionated"' "$HARNESS_DIR/bin/omarchy-iso-test"
+sed -i 's/wait_for_screen "Opinionated"/wait_for_screen "Agentic"/g' \
+  "$HARNESS_DIR/bin/omarchy-iso-test"
+
 # The official harness names Arch paths and its package helper. Adapt only
 # those host-side dependencies; the guest still boots and installs the exact
 # verified official ISO.
@@ -61,4 +68,3 @@ PATH="$SHIM_DIR:$PATH" "$HARNESS_DIR/bin/omarchy-iso-test" \
 
 test -s "$HARNESS_DIR/test-runs/omarchy-${ISO_VERSION}/base.qcow2"
 echo "PASS: a complete Omarchy ${ISO_VERSION} base VM was installed on the GitHub runner"
-
