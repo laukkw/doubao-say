@@ -1,0 +1,82 @@
+name: Midscene E2E
+
+on:
+  push:
+    branches: [ci/midscene-e2e]
+    paths:
+      - ".github/workflows/midscene-e2e.yml"
+      - "tests/midscene/package.json"
+      - "tests/midscene/package-lock.json"
+      - "tests/midscene/gtk_fixture.py"
+      - "tests/midscene/e2e/**"
+      - "src/doubao_input/ui/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midscene-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu-gtk:
+    name: AI-driven GTK onboarding
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+      MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
+      MIDSCENE_MODEL_BASE_URL: ${{ secrets.MIDSCENE_MODEL_BASE_URL }}
+      MIDSCENE_MODEL_FAMILY: ${{ secrets.MIDSCENE_MODEL_FAMILY }}
+      MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+      MIDSCENE_COMPUTER_HEADLESS_LINUX: "true"
+      MIDSCENE_REPLANNING_CYCLE_LIMIT: "40"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/midscene/package-lock.json
+
+      - name: Require Midscene model configuration
+        run: |
+          test -n "$MIDSCENE_MODEL_API_KEY"
+          test -n "$MIDSCENE_MODEL_NAME"
+          test -n "$MIDSCENE_MODEL_BASE_URL"
+          test -n "$MIDSCENE_MODEL_FAMILY"
+
+      - name: Install desktop test environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            adwaita-icon-theme dbus-x11 fluxbox fonts-noto-cjk \
+            gir1.2-gtk-4.0 gnome-themes-extra imagemagick \
+            libasound2 libatk-bridge2.0-0 libdrm2 libgbm1 libgtk-3-0 \
+            libnotify4 libnss3 libpng16-16 libsecret-1-0 libx11-6 \
+            libxinerama1 libxkbcommon-x11-0 libxss1 libxtst6 \
+            python3-cairo python3-gi x11-xserver-utils xdg-utils xvfb
+
+      - name: Install pinned Midscene dependencies
+        working-directory: tests/midscene
+        # sharp's platform packages are pinned explicitly. Skipping lifecycle
+        # scripts avoids an npm ordering bug that tries to build sharp before
+        # those prebuilt packages are linked.
+        run: npm ci --include=optional --ignore-scripts
+
+      - name: Run real Midscene desktop E2E
+        working-directory: tests/midscene
+        run: npm test
+
+      - name: Upload Midscene report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-gtk-e2e-report
+          path: tests/midscene/midscene_run/
+          if-no-files-found: warn
+          retention-days: 7

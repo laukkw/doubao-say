@@ -29,5 +29,13 @@ After that probe is stable, the next stages are:
    Ubuntu for every trusted change.
 4. Run a smaller Omarchy/Hyprland Midscene suite manually in the guest.
 
-The AI stage needs a multimodal model credential. No local credential is
-copied into GitHub automatically, and tests must contain only synthetic data.
+The ordinary Ubuntu stage maps the real GTK onboarding window inside the
+headless Midscene desktop. Its synthetic fixture performs no login, recording,
+network request, paste, or user-settings read. Midscene visually navigates to
+the shortcut page, runs the fake endpoint check, verifies its visible feedback,
+continues to the voice page, checks that navigation reset the scroll position,
+and completes setup. The HTML replay is uploaded for every run.
+
+The AI stage needs a multimodal model credential. Its `MIDSCENE_MODEL_*`
+configuration is stored only as GitHub Actions Secrets; tests contain only
+synthetic data.
