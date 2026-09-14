@@ -36,7 +36,10 @@ class PolishSettings(Gtk.Box):
 
         self.base_url = Gtk.Entry(text=settings.polish_base_url, hexpand=True)
         self.model = Gtk.Entry(text=settings.polish_model, hexpand=True)
-        self.api_key = Gtk.Entry(visibility=False, invisible_char=ord("•"), hexpand=True)
+        # Older PyGObject releases cannot convert invisible_char through the
+        # constructor's property mapping even though the setter accepts it.
+        self.api_key = Gtk.Entry(visibility=False, hexpand=True)
+        self.api_key.set_invisible_char("•")
         self.api_key.set_placeholder_text(tr("Saved — leave blank to keep" if has_key else "Required when enabled",
                                              "已保存，留空则保持不变" if has_key else "启用时必填"))
         self.details.append(self._row("Base URL", self.base_url))
