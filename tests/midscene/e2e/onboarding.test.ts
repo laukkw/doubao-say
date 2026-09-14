@@ -76,6 +76,8 @@ describe('Doubao Say onboarding', () => {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
         ...process.env,
+        GDK_BACKEND: 'x11',
+        GSK_RENDERER: 'cairo',
         GTK_A11Y: 'none',
         PYTHONPATH: resolve(repositoryRoot, 'src'),
         XDG_CONFIG_HOME: resolve(repositoryRoot, '.midscene-config'),
