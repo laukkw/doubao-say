@@ -34,7 +34,9 @@ describe.skipIf(process.env.OMARCHY_E2E !== 'true')(
             'inside a real Omarchy Hyprland virtual machine shown through a VNC viewer. ' +
             'Interact only with the Doubao Say window and use visible labels.',
         },
-        xvfbResolution: '1280x960x24',
+        // Match QEMU's 1280x800 guest framebuffer exactly. A taller Xvfb
+        // makes TigerVNC letterbox the guest and offsets Midscene clicks.
+        xvfbResolution: '1280x800x24',
       });
 
       fluxbox = spawn('fluxbox', [], {
