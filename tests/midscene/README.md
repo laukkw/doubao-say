@@ -25,6 +25,15 @@ Omarchy 4.0.3 was installed successfully on a GitHub-hosted runner in
 The run took 13 minutes 41 seconds, including about 55 seconds to transfer the
 ISO.
 
+The versioned 4.0.3 base bundle is 3.8 GB and was published successfully in
+[Actions run 34926824941](https://github.com/quanru/doubao-say/actions/runs/34926824941).
+The first restore-backed end-to-end run then passed in
+[Actions run 34927901882](https://github.com/quanru/doubao-say/actions/runs/34927901882):
+3 minutes 55 seconds to prepare and restore the VM, 3 minutes for the real
+Omarchy Midscene flow, and 7 minutes 31 seconds for the whole job. The prior
+install-per-run workflow took 17 minutes 43 seconds, so the restored path saves
+10 minutes 12 seconds (about 58%).
+
 The manual experimental workflow now continues from that installed base image:
 
 1. Boot a throwaway overlay from the installed base image.
