@@ -81,7 +81,28 @@ jobs:
 
       - name: Run Ubuntu 22.04 Midscene E2E
         working-directory: tests/midscene
-        run: npm test
+        run: |
+          set -o pipefail
+          midscene_passed=false
+          for test_attempt in 1 2 3; do
+            attempt_log="/tmp/ubuntu-midscene-attempt-${test_attempt}.log"
+            if npm test 2>&1 | tee "$attempt_log"; then
+              midscene_passed=true
+              break
+            fi
+
+            if ! grep -Eq 'Connection error|ETIMEDOUT|failed to call AI model service' "$attempt_log"; then
+              echo "Ubuntu Midscene failed for a non-network reason; not retrying." >&2
+              exit 1
+            fi
+            echo "Transient model connection failure on attempt ${test_attempt}; retrying in 10 seconds." >&2
+            sleep 10
+          done
+
+          if [[ $midscene_passed != true ]]; then
+            echo "Ubuntu Midscene exhausted three model-connection attempts." >&2
+            exit 1
+          fi
 
       - name: Upload Midscene report
         if: always()
