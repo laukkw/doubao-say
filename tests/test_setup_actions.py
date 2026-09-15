@@ -8,6 +8,7 @@ from gi.repository import GLib
 from doubao_input.app import DoubaoInputApp
 from doubao_input.ui.control_window import ControlWindow
 from doubao_input.ui.polish_settings import PolishSettings
+from doubao_input.ui.settings_window import SettingsWindow
 
 
 class SetupActionsTest(unittest.TestCase):
@@ -124,3 +125,27 @@ class SetupActionsTest(unittest.TestCase):
 
         adjustment.set_value.assert_called_once_with(2.0)
         self.assertEqual(result, GLib.SOURCE_REMOVE)
+
+    def test_official_key_test_saves_first_and_has_adjacent_feedback(self):
+        view = SimpleNamespace(
+            _asr_testing=False,
+            _asr_has_key=False,
+            _save_asr=Mock(),
+            _test_asr=Mock(),
+            asr_key=Mock(),
+            asr_status=Mock(),
+            asr_test_button=Mock(),
+        )
+        view.asr_key.get_text.return_value = "test-key"
+        view._save_asr_key_now = lambda: SettingsWindow._save_asr_key_now(view)
+        view._asr_tested = lambda result, error: SettingsWindow._asr_tested(
+            view, result, error)
+
+        SettingsWindow._test_asr_clicked(view)
+
+        view._save_asr.assert_called_once_with("test-key")
+        self.assertTrue(view._asr_testing)
+        completed = view._test_asr.call_args.args[1]
+        completed("API key accepted", "")
+        self.assertFalse(view._asr_testing)
+        self.assertEqual(view.asr_status.set_text.call_args.args[0], "API key accepted")

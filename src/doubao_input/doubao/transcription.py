@@ -34,9 +34,14 @@ logger = logging.getLogger(__name__)
 class TranscriptionManager:
     """Orchestrates the recording lifecycle."""
 
-    def __init__(self, app_state: AppState) -> None:
+    def __init__(self, app_state: AppState, *, asr_client=None,
+                 credential_store=ParamsStore, interactive_auth=True,
+                 clear_rejected_credentials=True) -> None:
         self.app_state = app_state
-        self.asr_client = ASRClient()
+        self.asr_client = asr_client or ASRClient()
+        self.credential_store = credential_store
+        self.interactive_auth = interactive_auth
+        self.clear_rejected_credentials = clear_rejected_credentials
         self.audio_capture = AudioCapture()
 
         self.using_cached_params = False
@@ -59,6 +64,19 @@ class TranscriptionManager:
         self.on_recover = None  # (partial_text) -> None, before a failed session resets
         self.on_cancel_enabled_changed = None  # (enabled: bool) -> None
 
+        self._wire_asr_callbacks()
+
+    def configure_backend(self, asr_client, credential_store, *,
+                          interactive_auth, clear_rejected_credentials) -> None:
+        """Replace the idle recognition backend without replacing the state machine."""
+        if self.app_state.recording_state != RecordingState.IDLE:
+            raise RuntimeError("Cannot change recognition service while recording")
+        self._generation += 1
+        self.asr_client.disconnect()
+        self.asr_client = asr_client
+        self.credential_store = credential_store
+        self.interactive_auth = interactive_auth
+        self.clear_rejected_credentials = clear_rejected_credentials
         self._wire_asr_callbacks()
 
     def _wire_asr_callbacks(self) -> None:
@@ -145,20 +163,27 @@ class TranscriptionManager:
                                               "麦克风启动失败，请检查输入设备和权限")
             return
 
-        # Try cached params first, fall back to WebView extraction
-        cached = ParamsStore.load()
+        # Try provider credentials first. Only the web-account provider can
+        # recover missing credentials through WebView extraction.
+        try:
+            cached = self.credential_store.load()
+        except (OSError, ValueError):
+            logger.warning("Saved recognition credentials could not be read")
+            cached = None
         if cached:
-            logger.info("Using cached ASR params")
+            logger.info("Using saved recognition credentials")
             self.using_cached_params = True
             self.asr_client.connect(cached)
-        elif self.on_params_needed:
+        elif self.interactive_auth and self.on_params_needed:
             self.using_cached_params = False
             generation = self._generation
             self.on_params_needed(lambda params: self._deliver(
                 generation, self._on_params_extracted, (params,)))
         else:
             self._reset_to_idle()
-            self.app_state.error_message = tr("Could not connect; please sign in again", "无法获取连接参数，请重新登录")
+            self.app_state.error_message = tr(
+                "Configure recognition credentials in Settings and try again",
+                "请在设置中配置语音识别凭证后重试")
 
     def _stop_recording(self) -> None:
         logger.info("Stopping recording...")
@@ -308,13 +333,14 @@ class TranscriptionManager:
     def _handle_auth_failure(self) -> None:
         if self.on_recover and self.app_state.transcription_text.strip():
             self.on_recover(self.app_state.transcription_text)
-        logger.warning("Auth failure, clearing cached params")
+        logger.warning("Recognition credentials were rejected")
         clear_failed = False
-        try:
-            ParamsStore.clear()
-        except OSError:
-            clear_failed = True
-            logger.warning("Could not remove expired credentials")
+        if self.clear_rejected_credentials:
+            try:
+                self.credential_store.clear()
+            except OSError:
+                clear_failed = True
+                logger.warning("Could not remove expired credentials")
         self.using_cached_params = False
         self.audio_capture.stop()
         self.asr_client.disconnect()
@@ -324,8 +350,8 @@ class TranscriptionManager:
             self.on_auth_expired()
         if clear_failed:
             self.app_state.error_message = tr(
-                "Sign-in expired, but saved credentials could not be removed. Check folder permissions.",
-                "登录已过期，但无法删除保存的凭证，请检查目录权限。")
+                "Credentials were rejected, but the saved value could not be removed. Check folder permissions.",
+                "凭证已被拒绝，但无法删除保存内容，请检查目录权限。")
 
     def _set_state(self, new_state: RecordingState) -> None:
         self.app_state.recording_state = new_state
@@ -336,7 +362,7 @@ class TranscriptionManager:
         """Called when WebView param extraction completes."""
         if params:
             try:
-                ParamsStore.save(params)
+                self.credential_store.save(params)
             except (OSError, ValueError):
                 self.audio_capture.stop()
                 self._reset_to_idle()

@@ -3,7 +3,9 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from doubao_input.app import DoubaoInputApp
-from doubao_input.doubao.app_state import LoginStatus, RecordingState
+from doubao_input.doubao.app_state import AppState, LoginStatus, RecordingState
+from doubao_input.doubao.volcengine_asr_client import VolcengineASRClient
+from doubao_input.doubao.volcengine_credentials import VolcengineCredentialsStore
 from doubao_input.result import RecentResult
 from doubao_input.settings import Settings
 
@@ -135,6 +137,16 @@ class AppDeliveryEdgesTest(TestCase):
 
 
 class AppSetupEdgesTest(TestCase):
+    def test_official_provider_builds_noninteractive_backend(self):
+        app = SimpleNamespace(settings=Settings(asr_provider="volcengine"),
+                              app_state=AppState())
+        manager = DoubaoInputApp._new_transcription_manager(app)
+        self.addCleanup(manager.asr_client.disconnect)
+        self.assertIsInstance(manager.asr_client, VolcengineASRClient)
+        self.assertIs(manager.credential_store, VolcengineCredentialsStore)
+        self.assertFalse(manager.interactive_auth)
+        self.assertFalse(manager.clear_rejected_credentials)
+
     def test_microphone_selection_uses_normal_settings_pipeline(self):
         app = SimpleNamespace(settings=Settings(microphone=""), apply_settings=Mock())
         DoubaoInputApp._apply_microphone(app, "desk-mic")

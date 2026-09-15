@@ -1,18 +1,22 @@
 """Grouped preferences, safe hardware-key capture and allowlisted diagnostics."""
 from dataclasses import replace
-from gi.repository import Gtk, Gdk
+from gi.repository import GLib, Gtk, Gdk
 from doubao_input.ui.trigger_picker import TriggerPicker
 from doubao_input.i18n import LANGUAGES, tr
 from doubao_input.doubao.devices import microphones
 from doubao_input.diagnostics import report
 from doubao_input.product import VERSION
 from doubao_input.ui.style import apply_window_style
+from doubao_input.settings import ASR_PROVIDERS
 
 
 class SettingsWindow:
     def __init__(self, parent, settings, apply, *, capture_key=None,
                  cancel_capture=lambda: None, sign_out=lambda: None,
-                 restart=lambda: None, login=lambda: None, preview=lambda: None, apply_key=None):
+                 restart=lambda: None, login=lambda: None, preview=lambda: None,
+                 apply_key=None, asr_has_key=lambda: False,
+                 save_asr=lambda key: None, clear_asr=lambda: None,
+                 test_asr=lambda key, completed: None):
         self.window = Gtk.Window(title=tr("Doubao Say Settings", "豆包说设置"), transient_for=parent, modal=True)
         self.window.set_default_size(540, 580)
         apply_window_style(self.window)
@@ -20,6 +24,12 @@ class SettingsWindow:
         self._apply = apply
         self._restart = restart
         self._updating = False
+        self._asr_has_key = asr_has_key()
+        self._save_asr = save_asr
+        self._clear_asr = clear_asr
+        self._test_asr = test_asr
+        self._asr_save_source = 0
+        self._asr_testing = False
         self.window.connect("close-request", self._close)
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
@@ -66,6 +76,41 @@ class SettingsWindow:
         row(tr("Language", "界面语言"), self.language)
         self.autostart = row(tr("Start in background at login", "登录桌面后后台启动"),
                              Gtk.Switch(active=settings.autostart))
+
+        section(tr("Recognition service", "语音识别服务"))
+        self.asr_provider = Gtk.DropDown.new_from_strings([
+            tr("Doubao account", "豆包账号"),
+            tr("Volcengine official API", "火山引擎官方 API"),
+        ])
+        self.asr_provider.set_selected(ASR_PROVIDERS.index(settings.asr_provider))
+        row(tr("Service", "服务"), self.asr_provider)
+        self.asr_details = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.asr_key = Gtk.Entry(visibility=False, hexpand=True)
+        self.asr_key.set_invisible_char("•")
+        self.asr_key.set_placeholder_text(tr(
+            "Saved — leave blank to keep" if self._asr_has_key else "Enter speech API key",
+            "已保存，留空则保持不变" if self._asr_has_key else "填写语音 API Key"))
+        key_row = Gtk.Box(spacing=12)
+        key_row.add_css_class("settings-row")
+        key_row.append(Gtk.Label(label="API Key", xalign=0, hexpand=True, wrap=True))
+        key_row.append(self.asr_key)
+        self.asr_details.append(key_row)
+        self.asr_details.append(Gtk.Label(xalign=0, wrap=True, label=tr(
+            "Uses the official Seed ASR 2.0 hourly API. Audio streams while you speak; the complete result returns after you finish. The key is stored separately with owner-only permissions.",
+            "使用官方 Seed ASR 2.0 小时版。说话时流式上传音频，结束后返回完整结果。API Key 单独保存且仅当前用户可读。")))
+        asr_actions = Gtk.Box(spacing=8, homogeneous=True)
+        self.asr_test_button = Gtk.Button(label=tr("Test API key", "测试 API Key"))
+        self.asr_test_button.connect("clicked", self._test_asr_clicked)
+        self.asr_clear_button = Gtk.Button(label=tr("Clear API key", "清除 API Key"))
+        self.asr_clear_button.connect("clicked", self._clear_asr_clicked)
+        asr_actions.append(self.asr_test_button)
+        asr_actions.append(self.asr_clear_button)
+        self.asr_details.append(asr_actions)
+        self.asr_status = Gtk.Label(xalign=0, wrap=True, selectable=True)
+        self.asr_status.add_css_class("accent")
+        self.asr_details.append(self.asr_status)
+        self.asr_details.set_visible(settings.asr_provider == "volcengine")
+        box.append(self.asr_details)
 
         section(tr("Input", "输入"))
         def use_key(key, modifiers=()):
@@ -116,15 +161,14 @@ class SettingsWindow:
                           Gtk.Switch(active=settings.reduced_motion))
         button(tr("Preview appearance", "预览外观"), preview)
 
-        section(tr("Account & privacy", "账号与隐私"))
-        box.append(Gtk.Label(xalign=0, wrap=True, label=tr(
-            "Doubao receives audio during dictation and voice tests. Microphone checks stay local. No recording files or transcript history are saved. Recent text stays in memory until cleared or the app exits.",
-            "听写和语音测试会向豆包发送音频，麦克风检查仅在本机进行。不保存录音文件和转写历史，最近文字仅在内存保留，清除或退出后消失。")))
-        button(tr("Open Doubao sign-in", "打开豆包登录"), login)
+        section(tr("Credentials & privacy", "凭证与隐私"))
+        self.privacy_copy = Gtk.Label(xalign=0, wrap=True)
+        box.append(self.privacy_copy)
+        self.login_button = button(tr("Open Doubao sign-in", "打开豆包登录"), login)
         def confirm_sign_out():
             dialog = Gtk.MessageDialog(transient_for=self.window, modal=True,
                 message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.OK_CANCEL,
-                text=tr("Clear saved sign-in credentials?", "清除保存的登录凭证？"))
+                text=tr("Clear saved recognition credentials?", "清除保存的语音识别凭证？"))
             def response(win, choice):
                 win.destroy()
                 if choice == Gtk.ResponseType.OK:
@@ -135,12 +179,13 @@ class SettingsWindow:
                         status.set_text(str(error))
             dialog.connect("response", response)
             dialog.present()
-        button(tr("Clear saved sign-in…", "清除保存的登录信息…"), confirm_sign_out)
+        self.clear_credentials_button = button(
+            tr("Clear saved credentials…", "清除保存的凭证…"), confirm_sign_out)
 
         section(tr("About & diagnostics", "关于与诊断"))
         box.append(Gtk.Label(label=tr(
-            f"Doubao Say {VERSION} · Unofficial · Powered by Doubao",
-            f"豆包说 {VERSION} · 非官方 · 由豆包提供识别"), xalign=0, wrap=True))
+            f"Doubao Say {VERSION} · Linux voice input",
+            f"豆包说 {VERSION} · Linux 语音输入"), xalign=0, wrap=True))
         diagnostics = Gtk.TextView(editable=False, wrap_mode=Gtk.WrapMode.WORD_CHAR)
         diagnostic_scroll = Gtk.ScrolledWindow(min_content_height=110, max_content_height=180)
         diagnostic_scroll.set_child(diagnostics)
@@ -165,16 +210,21 @@ class SettingsWindow:
         root.append(footer)
 
         self.language.connect("notify::selected", self._language_changed)
+        self.asr_provider.connect("notify::selected", self._asr_provider_changed)
+        self.asr_key.connect("changed", self._queue_asr_key_save)
         self.autostart.connect("notify::active", self._changed)
         self.enter.connect("notify::active", self._changed)
         self.hold.connect("value-changed", self._changed)
         self.double.connect("value-changed", self._changed)
         self.microphone.connect("notify::selected", self._changed)
         self.motion.connect("notify::active", self._changed)
+        self.window.connect("unmap", self._flush_asr_key)
+        self._sync_provider_details()
 
     def _value(self):
         return replace(self._settings,
             language=LANGUAGES[self.language.get_selected()],
+            asr_provider=ASR_PROVIDERS[self.asr_provider.get_selected()],
             doubao_key=self.trigger_picker.applied_key,
             doubao_modifiers=self.trigger_picker.applied_modifiers,
             hold_ms=self.hold.get_value_as_int(),
@@ -188,6 +238,8 @@ class SettingsWindow:
         self._updating = True
         try:
             self.language.set_selected(LANGUAGES.index(self._settings.language))
+            self.asr_provider.set_selected(ASR_PROVIDERS.index(self._settings.asr_provider))
+            self._sync_provider_details()
             self.autostart.set_active(self._settings.autostart)
             self.enter.set_active(self._settings.double_enter)
             self.hold.set_value(self._settings.hold_ms)
@@ -230,8 +282,111 @@ class SettingsWindow:
         except (ValueError, OSError) as error:
             self.status.set_text(str(error))
 
+    def _asr_provider_changed(self, *_):
+        if self._updating:
+            return
+        official = ASR_PROVIDERS[self.asr_provider.get_selected()] == "volcengine"
+        self._sync_provider_details()
+        if self._save_current() and official and not self._asr_has_key:
+            self.asr_status.set_text(tr(
+                "Enter an API key before using official recognition.",
+                "使用官方识别前请填写 API Key。"))
+
+    def _sync_provider_details(self):
+        official = ASR_PROVIDERS[self.asr_provider.get_selected()] == "volcengine"
+        self.asr_details.set_visible(official)
+        self.login_button.set_visible(not official)
+        self.clear_credentials_button.set_visible(not official)
+        self.privacy_copy.set_text(tr(
+            "Volcengine receives audio during dictation and voice tests. Usage and data handling follow your Volcengine account and service terms. Microphone checks stay local. No recording files or transcript history are saved; recent text stays in memory until cleared or the app exits.",
+            "听写和试说时会向火山引擎发送音频，用量和数据处理遵循你的火山引擎账号及服务条款。麦克风检查仅在本机进行。不保存录音文件和转写历史；最近文字仅在内存保留，清除或退出后消失。") if official else tr(
+            "Doubao receives audio during dictation and voice tests. Microphone checks stay local. No recording files or transcript history are saved. Recent text stays in memory until cleared or the app exits.",
+            "听写和语音测试会向豆包发送音频，麦克风检查仅在本机进行。不保存录音文件和转写历史，最近文字仅在内存保留，清除或退出后消失。"))
+
+    def _queue_asr_key_save(self, *_):
+        if self._updating or not self.asr_key.get_text().strip():
+            return
+        if self._asr_save_source:
+            GLib.source_remove(self._asr_save_source)
+        self._asr_save_source = GLib.timeout_add(500, self._run_asr_key_save)
+
+    def _run_asr_key_save(self):
+        self._asr_save_source = 0
+        self._save_asr_key_now()
+        return GLib.SOURCE_REMOVE
+
+    def _save_asr_key_now(self):
+        key = self.asr_key.get_text().strip()
+        if not key:
+            return True
+        try:
+            self._save_asr(key)
+        except (ValueError, OSError) as error:
+            self.asr_status.set_text(str(error))
+            return False
+        self._asr_has_key = True
+        self.asr_status.set_text(tr("API key saved automatically.", "API Key 已自动保存。"))
+        return True
+
+    def _flush_asr_key(self, *_):
+        if self._asr_save_source:
+            GLib.source_remove(self._asr_save_source)
+            self._asr_save_source = 0
+        if self._save_asr_key_now() and self.asr_key.get_text():
+            self._updating = True
+            try:
+                self.asr_key.set_text("")
+                self.asr_key.set_placeholder_text(tr(
+                    "Saved — leave blank to keep", "已保存，留空则保持不变"))
+            finally:
+                self._updating = False
+
+    def _clear_asr_clicked(self, *_):
+        try:
+            self._clear_asr()
+        except (ValueError, OSError) as error:
+            self.asr_status.set_text(str(error))
+            return
+        self._asr_has_key = False
+        self._updating = True
+        try:
+            self.asr_key.set_text("")
+            self.asr_key.set_placeholder_text(tr(
+                "Enter speech API key", "填写语音 API Key"))
+        finally:
+            self._updating = False
+        self.asr_status.set_text(tr("API key cleared.", "API Key 已清除。"))
+
+    def _test_asr_clicked(self, *_):
+        if self._asr_testing:
+            return
+        if not self._save_asr_key_now() or not (
+                self._asr_has_key or self.asr_key.get_text().strip()):
+            self.asr_status.set_text(tr("Enter an API key first.", "请先填写 API Key。"))
+            return
+        self._asr_testing = True
+        self.asr_test_button.set_sensitive(False)
+        self.asr_test_button.set_label(tr("Testing…", "正在测试…"))
+        self.asr_status.set_text(tr(
+            "Testing official recognition…", "正在测试官方语音识别…"))
+        try:
+            self._test_asr(self.asr_key.get_text().strip() or None, self._asr_tested)
+        except (ValueError, OSError) as error:
+            self._asr_tested(None, str(error))
+
+    def _asr_tested(self, result, error):
+        self._asr_testing = False
+        self.asr_test_button.set_sensitive(True)
+        self.asr_test_button.set_label(tr("Test API key", "测试 API Key"))
+        self.asr_status.set_text((tr("Test failed: ", "测试失败：") + error)
+                                 if error else (result or tr(
+                                     "API key accepted.", "API Key 可用。")))
+
     def _close(self, *_):
         self.trigger_picker.cancel()
+        flush = getattr(self, "_flush_asr_key", None)
+        if flush:
+            flush()
         return not self._save_current()
 
     def show(self):
