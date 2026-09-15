@@ -84,27 +84,51 @@ tar -C "$ROOT_DIR" --exclude='__pycache__' -cf - \
   ssh_guest "rm -rf '$PLUGIN_DIR' && mkdir -p '$PLUGIN_DIR' && tar -C '$PLUGIN_DIR' -xf -"
 
 ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
-ssh_session "rm -rf /tmp/doubao-midscene-config; \
-  mkdir -p /tmp/doubao-midscene-config; \
-  export PYTHONPATH='$PLUGIN_DIR/src'; \
-  export XDG_CONFIG_HOME=/tmp/doubao-midscene-config; \
-  export PYTHONDONTWRITEBYTECODE=1; \
-  setsid -f python3 '$PLUGIN_DIR/tests/midscene/gtk_fixture.py' \
-    >/tmp/doubao-midscene-fixture.log 2>&1"
+start_guest_fixture() {
+  ssh_session "pkill -f '[g]tk_fixture.py' >/dev/null 2>&1 || true; \
+    rm -rf /tmp/doubao-midscene-config; \
+    mkdir -p /tmp/doubao-midscene-config; \
+    export PYTHONPATH='$PLUGIN_DIR/src'; \
+    export XDG_CONFIG_HOME=/tmp/doubao-midscene-config; \
+    export PYTHONDONTWRITEBYTECODE=1; \
+    setsid -f python3 '$PLUGIN_DIR/tests/midscene/gtk_fixture.py' \
+      >/tmp/doubao-midscene-fixture.log 2>&1"
 
-for _attempt in $(seq 1 30); do
-  if ssh_session "grep -q 'READY: synthetic Doubao Say GTK fixture' /tmp/doubao-midscene-fixture.log && \
-      hyprctl -j clients | jq -e '[.[] | select(.title == \"Doubao Say\")] | length == 1'" \
-      >/dev/null 2>&1; then
+  for _ready_attempt in $(seq 1 30); do
+    if ssh_session "grep -q 'READY: synthetic Doubao Say GTK fixture' /tmp/doubao-midscene-fixture.log && \
+        hyprctl -j clients | jq -e '[.[] | select(.title == \"Doubao Say\")] | length == 1'" \
+        >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  ssh_session "cat /tmp/doubao-midscene-fixture.log" >&2 || true
+  return 1
+}
+
+MIDSCENE_PASSED=false
+ATTEMPT_LOG=""
+for _test_attempt in 1 2 3; do
+  start_guest_fixture
+  ATTEMPT_LOG="/tmp/omarchy-midscene-attempt-${_test_attempt}.log"
+  if OMARCHY_E2E=true npm --prefix tests/midscene test -- \
+      e2e/omarchy-onboarding.test.ts 2>&1 | tee "$ATTEMPT_LOG"; then
+    MIDSCENE_PASSED=true
     break
   fi
-  sleep 2
+
+  if ! grep -Eq 'Connection error|ETIMEDOUT|failed to call AI model service' "$ATTEMPT_LOG"; then
+    echo "Omarchy Midscene failed for a non-network reason; not retrying." >&2
+    exit 1
+  fi
+  echo "Transient model connection failure on attempt $_test_attempt; retrying in 10 seconds." >&2
+  sleep 10
 done
 
-ssh_session "grep -q 'READY: synthetic Doubao Say GTK fixture' /tmp/doubao-midscene-fixture.log"
-ssh_session "hyprctl -j clients | jq -e '[.[] | select(.title == \"Doubao Say\")] | length == 1'"
-
-OMARCHY_E2E=true npm --prefix tests/midscene test -- \
-  e2e/omarchy-onboarding.test.ts
+if [[ $MIDSCENE_PASSED != true ]]; then
+  echo "Omarchy Midscene exhausted three model-connection attempts." >&2
+  exit 1
+fi
 
 ssh_session "hyprctl -j clients | jq -e '[.[] | select(.title == \"Doubao Say\")] | length == 1'"
