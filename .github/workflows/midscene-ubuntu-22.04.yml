@@ -43,6 +43,9 @@ jobs:
       MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
       MIDSCENE_COMPUTER_HEADLESS_LINUX: "true"
       MIDSCENE_REPLANNING_CYCLE_LIMIT: "40"
+      # GitHub's Ubuntu 22.04 runner intermittently times out while Node races
+      # IPv4 and IPv6 addresses. The model endpoint is reachable over IPv4.
+      NODE_OPTIONS: "--dns-result-order=ipv4first --no-network-family-autoselection"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,6 +63,29 @@ jobs:
           test -n "$MIDSCENE_MODEL_NAME"
           test -n "$MIDSCENE_MODEL_BASE_URL"
           test -n "$MIDSCENE_MODEL_FAMILY"
+
+      - name: Check Midscene model connectivity over Node.js
+        run: |
+          node --input-type=module <<'NODE'
+          const baseUrl = process.env.MIDSCENE_MODEL_BASE_URL.replace(/\/+$/, '');
+          const response = await fetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.MIDSCENE_MODEL_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: process.env.MIDSCENE_MODEL_NAME,
+              messages: [{ role: 'user', content: 'Reply OK.' }],
+              max_tokens: 1,
+            }),
+            signal: AbortSignal.timeout(90_000),
+          });
+          if (!response.ok) {
+            throw new Error(`Model preflight returned HTTP ${response.status}`);
+          }
+          await response.arrayBuffer();
+          NODE
 
       - name: Install desktop test environment
         run: |
