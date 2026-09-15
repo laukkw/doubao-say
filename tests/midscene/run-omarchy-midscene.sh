@@ -140,9 +140,9 @@ ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
 
 echo "Installing the source checkout through its unified installer."
 # The official ISO harness creates this disposable account with password
-# "omarchy". Allocate a PTY so install.sh and omarchy-pkg-add exercise the same
-# sudo interaction they receive in a real terminal.
-printf '%s\n' omarchy | ssh_session_tty "'$PLUGIN_DIR/install.sh' --yes"
+# "omarchy". Authorize sudo inside the same PTY that install.sh and
+# omarchy-pkg-add use, matching a user who has just authenticated in a terminal.
+ssh_session_tty "printf '%s\\n' omarchy | sudo -S -v && '$PLUGIN_DIR/install.sh' --yes"
 ssh_guest "test -f /home/omarchy/.local/share/applications/doubao-say.desktop && \
   grep -Fq '$PLUGIN_DIR/start.sh' /home/omarchy/.local/share/applications/doubao-say.desktop"
 
