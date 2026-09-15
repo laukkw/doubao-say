@@ -42,8 +42,10 @@ def main():
             existing.present()
             return
 
-        login = Gtk.Window(title="Doubao Say — Synthetic sign-in")
-        login.set_default_size(520, 280)
+        login = Gtk.Window(
+            title="CI-only synthetic sign-in — no real credentials"
+        )
+        login.set_default_size(760, 420)
         login.set_resizable(False)
         login.set_modal(True)
         login.set_transient_for(holder["control"].window)
@@ -54,10 +56,10 @@ def main():
         login.set_child(content)
 
         heading = Gtk.Label(
-            label="Synthetic Doubao sign-in",
+            label="CI-ONLY SYNTHETIC DOUBAO SIGN-IN",
             xalign=0,
         )
-        heading.add_css_class("title-2")
+        heading.add_css_class("title-1")
         content.append(heading)
         content.append(Gtk.Label(
             label=(

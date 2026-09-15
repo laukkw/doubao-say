@@ -7,6 +7,7 @@ export const runOnboardingFlow = async (agent: ComputerAgent) => {
   await agent.aiAct(
     'Click Open Doubao sign-in exactly once, then stop immediately.',
   );
+  await new Promise((resolvePromise) => setTimeout(resolvePromise, 1500));
   await agent.aiAct(
     'Verify a Synthetic Doubao sign-in window is visible and explicitly says it is CI-only, makes no network request, and uses no real credentials. Do not click anything.',
   );
