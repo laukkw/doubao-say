@@ -1,0 +1,104 @@
+name: Deploy Midscene report to Pages
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        description: Actions artifact containing one self-contained HTML report
+        required: true
+        type: string
+      report-label:
+        description: Distribution label shown in report history
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Publish HTML report history
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages-report-deploy
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download the successful run's HTML report artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ runner.temp }}/midscene-report
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Restore history and prepare the Pages site
+        env:
+          REPORT_RETENTION: ${{ vars.REPORT_RETENTION || '10' }}
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+          REPORT_LABEL: ${{ inputs.report-label }}
+        run: |
+          node scripts/build-pages-report.mjs \
+            --report-dir "$RUNNER_TEMP/midscene-report" \
+            --site-dir "$RUNNER_TEMP/pages-site" \
+            --run-id "$GITHUB_RUN_ID" \
+            --workflow-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --generated-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --retention "$REPORT_RETENTION" \
+            --pages-url "$PAGES_BASE_URL" \
+            --label "$REPORT_LABEL"
+
+      - name: Upload the restricted Pages payload
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/pages-site
+
+      - name: Deploy report history to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+      - name: Verify the published HTML endpoints
+        env:
+          HISTORY_URL: ${{ steps.pages.outputs.base_url }}/
+          REPORT_URL: ${{ steps.pages.outputs.base_url }}/reports/${{ github.run_id }}/index.html
+        run: |
+          verify_html() {
+            local url="$1"
+            local headers
+            headers=$(mktemp)
+            for attempt in $(seq 1 12); do
+              if curl --fail --silent --show-error --location --head \
+                --connect-timeout 10 --max-time 20 \
+                --dump-header "$headers" --output /dev/null "$url" \
+                && grep -Eiq '^content-type:[[:space:]]*text/html([[:space:]]*;|[[:space:]]*$)' "$headers"; then
+                echo "Verified HTTP 200 text/html: $url"
+                return 0
+              fi
+              echo "Waiting for Pages propagation (${attempt}/12): $url"
+              sleep 5
+            done
+            echo "Pages endpoint did not return HTTP 200 text/html: $url" >&2
+            return 1
+          }
+
+          verify_html "$HISTORY_URL"
+          verify_html "$REPORT_URL"
+
+      - name: Add report links to the run summary
+        env:
+          HISTORY_URL: ${{ steps.pages.outputs.base_url }}/
+          REPORT_URL: ${{ steps.pages.outputs.base_url }}/reports/${{ github.run_id }}/index.html
+        run: |
+          echo "- [Open this run's report]($REPORT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [Browse report history]($HISTORY_URL)" >> "$GITHUB_STEP_SUMMARY"
