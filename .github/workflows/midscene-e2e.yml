@@ -1,4 +1,4 @@
-name: Midscene E2E
+name: Midscene E2E · Ubuntu 22.04
 
 on:
   push:
@@ -16,12 +16,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: midscene-e2e-${{ github.ref }}
+  group: midscene-ubuntu-22-04-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   ubuntu-gtk:
-    name: AI-driven GTK onboarding
+    name: Ubuntu 22.04
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     env:
@@ -68,7 +68,7 @@ jobs:
         # those prebuilt packages are linked.
         run: npm ci --include=optional --ignore-scripts
 
-      - name: Run real Midscene desktop E2E
+      - name: Run Ubuntu 22.04 Midscene E2E
         working-directory: tests/midscene
         run: npm test
 
@@ -76,7 +76,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-gtk-e2e-report
+          name: midscene-ubuntu-22.04-e2e-report
           path: tests/midscene/midscene_run/
           if-no-files-found: warn
           retention-days: 7

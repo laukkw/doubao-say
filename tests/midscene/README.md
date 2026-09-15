@@ -1,7 +1,8 @@
-# Midscene experimental branch
+# Midscene E2E by Linux distribution
 
 Everything under this directory is developed on `ci/midscene-e2e`; it is not
-part of the release branch.
+part of the release branch. GitHub Actions names the two suites after their
+tested distributions: Ubuntu 22.04 and Omarchy 4.0.3.
 
 The image-builder CI proves that a GitHub-hosted runner can install the exact
 official Omarchy ISO in a headless QEMU/KVM VM. It reuses Omarchy's own ISO
@@ -13,7 +14,7 @@ The full Omarchy install is intentionally not triggered by ordinary pushes.
 `Build Omarchy VM image` installs the verified official ISO only when its
 version, checksum, harness, or rebuild marker changes, then publishes the
 installed base disk as a private, versioned OCI artifact in GHCR. The
-experimental E2E restores that base and creates a throwaway overlay, so normal
+Omarchy E2E restores that base and creates a throwaway overlay, so normal
 manual runs no longer download or install the 6 GB ISO.
 
 The GHCR artifact also contains the harness-created UEFI state and SSH key.
@@ -34,17 +35,18 @@ Omarchy Midscene flow, and 7 minutes 31 seconds for the whole job. The prior
 install-per-run workflow took 17 minutes 43 seconds, so the restored path saves
 10 minutes 12 seconds (about 58%).
 
-The manual experimental workflow now continues from that installed base image:
+The manual Omarchy workflow now continues from that installed base image:
 
 1. Boot a throwaway overlay from the installed base image.
 2. Copy this checkout to `md.lifeos.doubao-say` in the guest and run Omarchy's
    plugin validator.
-3. Run deterministic GTK UI fixtures with `@midscene/computer` on ordinary
-   Ubuntu for every trusted change.
+3. Run deterministic GTK UI fixtures with Rstest and `@midscene/computer` on
+   ordinary Ubuntu for every trusted change.
 4. Run the same focused Midscene onboarding suite through VNC in the real
    Omarchy/Hyprland guest session.
 
-The ordinary Ubuntu stage maps the real GTK onboarding window inside the
+Both distributions execute the same shared Midscene onboarding scenario. The
+Ubuntu stage maps the real GTK onboarding window inside the
 headless Midscene desktop. Its synthetic fixture starts signed out, opens an
 explicitly labelled CI-only sign-in window, and simulates a successful return
 without a network request or real credentials. It also performs no recording,
