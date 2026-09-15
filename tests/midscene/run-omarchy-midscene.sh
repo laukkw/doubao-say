@@ -123,6 +123,11 @@ ssh_guest "rm -rf '$PLUGIN_DIR' && mkdir -p '$PLUGIN_DIR' && \
 echo "Validating md.lifeos.doubao-say with Omarchy."
 ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
 
+echo "Installing the source checkout through its unified installer."
+ssh_session "'$PLUGIN_DIR/install.sh' --yes"
+ssh_guest "test -f /home/omarchy/.local/share/applications/doubao-say.desktop && \
+  grep -Fq '$PLUGIN_DIR/start.sh' /home/omarchy/.local/share/applications/doubao-say.desktop"
+
 echo "Launching the Doubao Say GTK fixture inside Hyprland."
 start_guest_fixture() {
   ssh_session "if test -s /tmp/doubao-midscene-fixture.pid; then \
