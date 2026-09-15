@@ -10,6 +10,7 @@ readonly SSH_KEY="$BASE_DIR/id_ed25519"
 readonly SSH_PORT=2222
 readonly PLUGIN_DIR="/home/omarchy/.config/omarchy/plugins/md.lifeos.doubao-say"
 readonly SHIM_DIR="$(mktemp -d)"
+readonly PLUGIN_ARCHIVE="$(mktemp /tmp/doubao-say-omarchy-plugin-XXXXXX.tar)"
 
 VM_PID=""
 
@@ -18,18 +19,29 @@ cleanup() {
     kill "$VM_PID" 2>/dev/null || true
   fi
   rm -rf "$SHIM_DIR"
+  rm -f "$PLUGIN_ARCHIVE"
 }
 trap cleanup EXIT
 
 ssh_guest() {
-  ssh -i "$SSH_KEY" -p "$SSH_PORT" \
-    -o BatchMode=yes \
-    -o IdentitiesOnly=yes \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -o ConnectTimeout=10 \
-    -o LogLevel=ERROR \
-    omarchy@127.0.0.1 "$@"
+  local status=255
+  for _ssh_attempt in 1 2 3 4 5; do
+    ssh -i "$SSH_KEY" -p "$SSH_PORT" \
+      -o BatchMode=yes \
+      -o IdentitiesOnly=yes \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o ConnectTimeout=10 \
+      -o LogLevel=ERROR \
+      omarchy@127.0.0.1 "$@" && return 0
+    status=$?
+    if ((status != 255)); then
+      return "$status"
+    fi
+    echo "Guest SSH connection attempt $_ssh_attempt failed; retrying." >&2
+    sleep 3
+  done
+  return "$status"
 }
 
 ssh_session() {
@@ -74,16 +86,42 @@ PATH="$SHIM_DIR:$PATH" "$SESSION_HARNESS" "$ISO_PATH" \
 readonly RUN_DIR="$(find "$BASE_DIR/runs" -mindepth 1 -maxdepth 1 -type d | sort | tail -1)"
 VM_PID="$(cat "$RUN_DIR/qemu.pid")"
 kill -0 "$VM_PID"
+ssh_guest true
 
 # Put this exact checkout at its real Omarchy plugin location, validate the
 # manifest with Omarchy, then launch the deterministic GTK fixture in the
 # guest's actual Hyprland session.
-tar -C "$ROOT_DIR" --exclude='__pycache__' -cf - \
+echo "Creating the Omarchy plugin test payload."
+tar -C "$ROOT_DIR" --exclude='__pycache__' -cf "$PLUGIN_ARCHIVE" \
   LICENSE README.md manifest.json install.sh install-user.sh setup-omarchy.sh start.sh \
-  omarchy src tests/midscene/gtk_fixture.py | \
-  ssh_guest "rm -rf '$PLUGIN_DIR' && mkdir -p '$PLUGIN_DIR' && tar -C '$PLUGIN_DIR' -xf -"
+  omarchy src tests/midscene/gtk_fixture.py
 
+for _copy_attempt in 1 2 3 4 5; do
+  if scp -i "$SSH_KEY" -P "$SSH_PORT" \
+      -o BatchMode=yes \
+      -o IdentitiesOnly=yes \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o ConnectTimeout=10 \
+      -o LogLevel=ERROR \
+      "$PLUGIN_ARCHIVE" omarchy@127.0.0.1:/tmp/doubao-say-plugin.tar; then
+    break
+  fi
+  if ((_copy_attempt == 5)); then
+    echo "Could not upload the plugin payload after five attempts." >&2
+    exit 1
+  fi
+  echo "Guest SCP attempt $_copy_attempt failed; retrying." >&2
+  sleep 3
+done
+
+ssh_guest "rm -rf '$PLUGIN_DIR' && mkdir -p '$PLUGIN_DIR' && \
+  tar -C '$PLUGIN_DIR' -xf /tmp/doubao-say-plugin.tar"
+
+echo "Validating md.lifeos.doubao-say with Omarchy."
 ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
+
+echo "Launching the Doubao Say GTK fixture inside Hyprland."
 start_guest_fixture() {
   ssh_session "pkill -f '[g]tk_fixture.py' >/dev/null 2>&1 || true; \
     rm -rf /tmp/doubao-midscene-config; \
