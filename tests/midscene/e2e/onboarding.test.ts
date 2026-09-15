@@ -101,7 +101,10 @@ describe('Doubao Say onboarding', () => {
       'Click the Next button in the fixed top navigation and wait until the current step is Trigger key.',
     );
     await agent.aiAct(
-      'In the Voice polishing section, scroll within the window if needed, click Test endpoint, and wait for the endpoint result.',
+      'Stay on the Trigger key step and do not click Previous or Next. Scroll down inside the light-gray central content panel until the Voice polishing heading and its controls are visible.',
+    );
+    await agent.aiAct(
+      'On the current Trigger key step, click the Test endpoint button in the visible Voice polishing section and wait for the endpoint result.',
     );
     await agent.aiAct(
       'Verify a visible message says the endpoint works and includes Synthetic endpoint response.',
