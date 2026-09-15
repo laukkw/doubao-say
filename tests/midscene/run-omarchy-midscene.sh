@@ -57,6 +57,21 @@ ssh_session() {
     $command" </dev/null
 }
 
+ssh_session_tty() {
+  local command="$1"
+  ssh -tt -i "$SSH_KEY" -p "$SSH_PORT" \
+    -o IdentitiesOnly=yes \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o LogLevel=ERROR \
+    omarchy@127.0.0.1 "export XDG_RUNTIME_DIR=/run/user/\$(id -u); \
+      export DBUS_SESSION_BUS_ADDRESS=unix:path=\$XDG_RUNTIME_DIR/bus; \
+      export OMARCHY_PATH=/usr/share/omarchy; \
+      export PATH=\$OMARCHY_PATH/bin:\$PATH; \
+      $command"
+}
+
 test -s "$ISO_PATH"
 test -s "$BASE_DIR/base.qcow2"
 test -s "$SSH_KEY"
@@ -125,9 +140,9 @@ ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
 
 echo "Installing the source checkout through its unified installer."
 # The official ISO harness creates this disposable account with password
-# "omarchy". Prime sudo in the same SSH shell so omarchy-pkg-add can run
-# non-interactively while still exercising install.sh's package path.
-ssh_session "printf '%s\\n' omarchy | sudo -S -v && '$PLUGIN_DIR/install.sh' --yes"
+# "omarchy". Allocate a PTY so install.sh and omarchy-pkg-add exercise the same
+# sudo interaction they receive in a real terminal.
+printf '%s\n' omarchy | ssh_session_tty "'$PLUGIN_DIR/install.sh' --yes"
 ssh_guest "test -f /home/omarchy/.local/share/applications/doubao-say.desktop && \
   grep -Fq '$PLUGIN_DIR/start.sh' /home/omarchy/.local/share/applications/doubao-say.desktop"
 
