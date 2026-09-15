@@ -123,14 +123,18 @@ ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
 
 echo "Launching the Doubao Say GTK fixture inside Hyprland."
 start_guest_fixture() {
-  ssh_session "pkill -f '[g]tk_fixture.py' >/dev/null 2>&1 || true; \
+  ssh_session "if test -s /tmp/doubao-midscene-fixture.pid; then \
+      kill \"\$(cat /tmp/doubao-midscene-fixture.pid)\" >/dev/null 2>&1 || true; \
+    fi; \
+    rm -f /tmp/doubao-midscene-fixture.pid; \
     rm -rf /tmp/doubao-midscene-config; \
     mkdir -p /tmp/doubao-midscene-config; \
     export PYTHONPATH='$PLUGIN_DIR/src'; \
     export XDG_CONFIG_HOME=/tmp/doubao-midscene-config; \
     export PYTHONDONTWRITEBYTECODE=1; \
-    setsid -f python3 '$PLUGIN_DIR/tests/midscene/gtk_fixture.py' \
-      >/tmp/doubao-midscene-fixture.log 2>&1"
+    nohup setsid python3 '$PLUGIN_DIR/tests/midscene/gtk_fixture.py' \
+      >/tmp/doubao-midscene-fixture.log 2>&1 </dev/null & \
+    echo \$! >/tmp/doubao-midscene-fixture.pid"
 
   for _ready_attempt in $(seq 1 30); do
     if ssh_session "grep -q 'READY: synthetic Doubao Say GTK fixture' /tmp/doubao-midscene-fixture.log && \
