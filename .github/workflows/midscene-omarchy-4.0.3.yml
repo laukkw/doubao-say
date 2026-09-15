@@ -45,8 +45,8 @@ permissions:
   packages: read
 
 concurrency:
-  group: omarchy-4-0-3-${{ github.ref }}
-  cancel-in-progress: true
+  group: midscene-model-e2e
+  cancel-in-progress: false
 
 jobs:
   omarchy-vm:
