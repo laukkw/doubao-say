@@ -127,10 +127,12 @@ def parse_response(data: bytes) -> SeedResponse:
 def result_text(message: dict | None) -> str:
     if not isinstance(message, dict):
         return ""
-    results = message.get("result")
-    if not isinstance(results, list):
-        return ""
-    for result in reversed(results):
-        if isinstance(result, dict) and isinstance(result.get("text"), str):
-            return result["text"].strip()
+    result = message.get("result")
+    if isinstance(result, dict) and isinstance(result.get("text"), str):
+        return result["text"].strip()
+    # Some compatible/legacy responses wrap result objects in a list.
+    if isinstance(result, list):
+        for item in reversed(result):
+            if isinstance(item, dict) and isinstance(item.get("text"), str):
+                return item["text"].strip()
     return ""

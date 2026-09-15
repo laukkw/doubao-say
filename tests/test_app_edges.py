@@ -147,6 +147,20 @@ class AppSetupEdgesTest(TestCase):
         self.assertFalse(manager.interactive_auth)
         self.assertFalse(manager.clear_rejected_credentials)
 
+    def test_successful_official_key_probe_restores_readiness(self):
+        completed = Mock()
+        app = SimpleNamespace(_busy=lambda: False, _asr_probe=None,
+                              _sync_recognition_status=Mock(), _control=Mock())
+        with patch("doubao_input.app.VolcengineASRClient") as client_type, \
+             patch("doubao_input.app.GLib.idle_add") as idle_add:
+            probe = client_type.return_value
+            DoubaoInputApp._test_official_asr(app, "test-key", completed)
+            probe.on_open()
+        probe.disconnect.assert_called_once_with()
+        app._sync_recognition_status.assert_called_once_with()
+        app._control.refresh.assert_called_once_with()
+        idle_add.assert_called_once_with(completed, "API key accepted", "")
+
     def test_microphone_selection_uses_normal_settings_pipeline(self):
         app = SimpleNamespace(settings=Settings(microphone=""), apply_settings=Mock())
         DoubaoInputApp._apply_microphone(app, "desk-mic")

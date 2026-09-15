@@ -926,6 +926,10 @@ class DoubaoInputApp(Gtk.Application):
             finished = True
             probe.disconnect()
             self._asr_probe = None
+            if not error:
+                self._sync_recognition_status()
+                if self._control:
+                    self._control.refresh()
             GLib.idle_add(completed, result, error)
         # The server's initial protocol response is the credential/resource
         # acknowledgement. No microphone data is needed for this settings test.

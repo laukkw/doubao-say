@@ -49,10 +49,12 @@ class VolcengineProtocolTest(unittest.TestCase):
 
     def test_response_parses_final_text_and_service_errors(self):
         response = parse_response(server_response(
-            {"result": [{"text": "hello"}]}, sequence=-3, last=True))
+            {"result": {"text": "hello", "utterances": []}},
+            sequence=-3, last=True))
         self.assertTrue(response.is_last)
         self.assertEqual(response.sequence, -3)
         self.assertEqual(result_text(response.message), "hello")
+        self.assertEqual(result_text({"result": [{"text": "legacy"}]}), "legacy")
         rejected = parse_response(server_response({"message": "denied"}, code=45000000))
         self.assertEqual(rejected.code, 45000000)
 

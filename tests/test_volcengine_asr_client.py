@@ -42,7 +42,7 @@ class FakeSocket:
         self.sent.append(packet)
         if len(packet) >= 2 and packet[1] == 0x23:
             await self.queue.put(response(
-                {"result": [{"text": "official result"}]}, sequence=-2, last=True))
+                {"result": {"text": "official result"}}, sequence=-2, last=True))
             self.final_sent.set()
 
     async def recv(self):
