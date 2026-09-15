@@ -54,7 +54,9 @@ paste, or user-settings read. Midscene verifies the automatic transition to the
 microphone step, visually navigates to the shortcut page, runs the fake endpoint
 check, verifies its visible feedback, continues to the voice page, checks that
 navigation reset the scroll position, and completes setup. The HTML replay is
-uploaded for every run.
+uploaded as a private workflow artifact for every run and published publicly to
+GitHub Pages. Each workflow summary links directly to that run's interactive
+HTML report; exact links for the five newest runs per distribution are retained.
 
 The AI stage needs a multimodal model credential. Its `MIDSCENE_MODEL_*`
 configuration is stored only as GitHub Actions Secrets; tests contain only
