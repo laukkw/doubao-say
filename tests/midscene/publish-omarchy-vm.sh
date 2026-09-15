@@ -23,11 +23,14 @@ tar -C "$BASE_DIR" --sparse -I 'zstd -T0 -6' -cf "$ARCHIVE" \
 sha256sum "$ARCHIVE" | sed 's#  .*/#  #' >"$BUNDLE_DIR/SHA256SUMS"
 du -h "$ARCHIVE"
 
-oras push "$IMAGE" \
-  --artifact-type application/vnd.lifeos.omarchy-vm.v1 \
-  --annotation "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
-  --annotation "org.opencontainers.image.version=$OMARCHY_ISO_VERSION" \
-  "$ARCHIVE:application/vnd.lifeos.omarchy-vm.layer.v1+zstd" \
-  "$BUNDLE_DIR/SHA256SUMS:text/plain"
+(
+  cd "$BUNDLE_DIR"
+  oras push "$IMAGE" \
+    --artifact-type application/vnd.lifeos.omarchy-vm.v1 \
+    --annotation "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+    --annotation "org.opencontainers.image.version=$OMARCHY_ISO_VERSION" \
+    "omarchy-base.tar.zst:application/vnd.lifeos.omarchy-vm.layer.v1+zstd" \
+    "SHA256SUMS:text/plain"
+)
 
 echo "PASS: published $IMAGE"
