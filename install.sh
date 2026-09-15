@@ -116,7 +116,15 @@ else
   if $CHECK_ONLY; then
     exit 0
   fi
-  "$ROOT/install-user.sh"
+  export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+  export PYTHONDONTWRITEBYTECODE=1
+  if [[ -x "$ROOT/.venv/bin/python" ]]; then
+    python_bin="$ROOT/.venv/bin/python"
+  else
+    python_bin=$(command -v python3)
+  fi
+  "$python_bin" -c \
+    'from doubao_input.settings import install_desktop; print("Installed launcher:", install_desktop())'
   plugin_root=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/$PLUGIN_ID
   if $ENABLE_PLUGIN; then
     if [[ $ROOT != "$plugin_root" ]]; then

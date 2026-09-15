@@ -31,8 +31,7 @@ def main():
                    PATH=str(runtime / "bin") + os.pathsep + os.environ["PATH"],
                    PYTHONPATH="", PYTHONDONTWRITEBYTECODE="1")
         subprocess.run(["omarchy", "plugin", "validate", str(plugin)], check=True)
-        subprocess.run([str(plugin / "setup-omarchy.sh"), "--check"], env=env, check=True)
-        subprocess.run([str(plugin / "install-user.sh")], env=env, check=True)
+        subprocess.run([str(plugin / "install.sh"), "--yes"], env=env, check=True)
         entry = root / "data/applications/doubao-say.desktop"
         assert str(plugin / "start.sh") in entry.read_text()
         assert "Name=Doubao Say" in entry.read_text()

@@ -18,7 +18,7 @@ compile:
 	$(PYTHON) -m compileall -q src/doubao_input tests packaging
 
 shell:
-	bash -n install.sh setup-omarchy.sh install-user.sh start.sh
+	bash -n install.sh setup-omarchy.sh start.sh
 
 whitespace:
 	git diff --check

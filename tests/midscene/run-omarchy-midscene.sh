@@ -57,6 +57,21 @@ ssh_session() {
     $command" </dev/null
 }
 
+ssh_session_tty() {
+  local command="$1"
+  ssh -tt -i "$SSH_KEY" -p "$SSH_PORT" \
+    -o IdentitiesOnly=yes \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=10 \
+    -o LogLevel=ERROR \
+    omarchy@127.0.0.1 "export XDG_RUNTIME_DIR=/run/user/\$(id -u); \
+      export DBUS_SESSION_BUS_ADDRESS=unix:path=\$XDG_RUNTIME_DIR/bus; \
+      export OMARCHY_PATH=/usr/share/omarchy; \
+      export PATH=\$OMARCHY_PATH/bin:\$PATH; \
+      $command"
+}
+
 test -s "$ISO_PATH"
 test -s "$BASE_DIR/base.qcow2"
 test -s "$SSH_KEY"
@@ -95,7 +110,7 @@ ssh_guest true
 # guest's actual Hyprland session.
 echo "Creating the Omarchy plugin test payload."
 tar -C "$ROOT_DIR" --exclude='__pycache__' -cf "$PLUGIN_ARCHIVE" \
-  LICENSE README.md manifest.json install.sh install-user.sh setup-omarchy.sh start.sh \
+  LICENSE README.md manifest.json install.sh setup-omarchy.sh start.sh \
   omarchy src tests/midscene/gtk_fixture.py
 
 for _copy_attempt in 1 2 3 4 5; do
@@ -122,6 +137,14 @@ ssh_guest "rm -rf '$PLUGIN_DIR' && mkdir -p '$PLUGIN_DIR' && \
 
 echo "Validating md.lifeos.doubao-say with Omarchy."
 ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
+
+echo "Installing the source checkout through its unified installer."
+# The official ISO harness creates this disposable account with password
+# "omarchy". Authorize sudo inside the same PTY that install.sh and
+# omarchy-pkg-add use, matching a user who has just authenticated in a terminal.
+ssh_session_tty "printf '%s\\n' omarchy | sudo -S -v && '$PLUGIN_DIR/install.sh' --yes"
+ssh_guest "test -f /home/omarchy/.local/share/applications/doubao-say.desktop && \
+  grep -Fq '$PLUGIN_DIR/start.sh' /home/omarchy/.local/share/applications/doubao-say.desktop"
 
 echo "Launching the Doubao Say GTK fixture inside Hyprland."
 start_guest_fixture() {
