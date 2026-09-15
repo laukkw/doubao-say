@@ -90,6 +90,10 @@ settings.json
 /recordings/
 /screenshots/
 /backups/
+/.midscene-omarchy/
+/.midscene-config/
+/tests/midscene/midscene_run/
+/tests/midscene/node_modules/
 *.bak
 *.orig
 *.rej
