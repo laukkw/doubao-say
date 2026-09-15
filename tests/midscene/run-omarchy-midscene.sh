@@ -4,8 +4,10 @@ set -euo pipefail
 readonly ROOT_DIR="$PWD"
 readonly WORK_DIR="$ROOT_DIR/.midscene-omarchy"
 readonly HARNESS_DIR="$WORK_DIR/omarchy-iso"
-readonly ISO_PATH="$WORK_DIR/omarchy-4.0.3.iso"
-readonly BASE_DIR="$HARNESS_DIR/test-runs/omarchy-4.0.3"
+# shellcheck source=omarchy-vm.env
+source "$ROOT_DIR/tests/midscene/omarchy-vm.env"
+readonly ISO_PATH="$WORK_DIR/omarchy-${OMARCHY_ISO_VERSION}.iso"
+readonly BASE_DIR="$HARNESS_DIR/test-runs/omarchy-${OMARCHY_ISO_VERSION}"
 readonly SSH_KEY="$BASE_DIR/id_ed25519"
 readonly SSH_PORT=2222
 readonly PLUGIN_DIR="/home/omarchy/.config/omarchy/plugins/md.lifeos.doubao-say"

@@ -1,16 +1,10 @@
 name: Midscene experimental
 
-on:
-  push:
-    branches: [ci/midscene-e2e]
-    paths:
-      # The VM install is deliberately expensive. Push this marker only when
-      # the pinned Omarchy ISO or installer harness needs to be revalidated.
-      - "tests/midscene/.rebuild-omarchy-vm"
-  workflow_dispatch:
+on: workflow_dispatch
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: midscene-experimental-${{ github.ref }}
@@ -57,8 +51,16 @@ jobs:
             "${MIDSCENE_MODEL_BASE_URL%/}/chat/completions" \
             >/dev/null
 
-      - name: Install Omarchy VM
-        run: tests/midscene/install-omarchy-vm.sh
+      - name: Install ORAS client
+        uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1
+
+      - name: Sign in to GitHub Container Registry
+        run: echo "$GHCR_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+
+      - name: Restore prebuilt Omarchy VM
+        run: tests/midscene/restore-omarchy-vm.sh
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:

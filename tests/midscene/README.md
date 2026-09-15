@@ -3,18 +3,22 @@
 Everything under this directory is developed on `ci/midscene-e2e`; it is not
 part of the release branch.
 
-The first CI stage proves that a GitHub-hosted runner can install the exact
+The image-builder CI proves that a GitHub-hosted runner can install the exact
 official Omarchy ISO in a headless QEMU/KVM VM. It reuses Omarchy's own ISO
-acceptance harness and saves installer screenshots and logs as short-lived
-artifacts. It does not upload the VM disk or its temporary SSH key.
+acceptance harness, saves installer evidence as short-lived artifacts, and
+publishes the resulting test-only VM bundle to this repository's private GHCR
+namespace.
 
 The full Omarchy install is intentionally not triggered by ordinary pushes.
-During development on this branch, deliberately add/update
-`tests/midscene/.rebuild-omarchy-vm` only when the pinned ISO or installer
-harness changes. Once this workflow exists on the default branch, it can also
-be started with `workflow_dispatch`. GitHub-hosted runners are ephemeral, so
-every such full rebuild downloads the pinned ISO again; routine Ubuntu
-Midscene tests do not need the ISO.
+`Build Omarchy VM image` installs the verified official ISO only when its
+version, checksum, harness, or rebuild marker changes, then publishes the
+installed base disk as a private, versioned OCI artifact in GHCR. The
+experimental E2E restores that base and creates a throwaway overlay, so normal
+manual runs no longer download or install the 6 GB ISO.
+
+The GHCR artifact also contains the harness-created UEFI state and SSH key.
+That key is valid only for the disposable test VM, whose SSH port is bound to
+the runner's loopback interface; it is never used for GitHub or production.
 
 Omarchy 4.0.3 was installed successfully on a GitHub-hosted runner in
 [Actions run 34866563731](https://github.com/quanru/doubao-say/actions/runs/34866563731).
