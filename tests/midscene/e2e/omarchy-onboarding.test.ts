@@ -68,7 +68,11 @@ describe.skipIf(process.env.OMARCHY_E2E !== 'true')(
         'Verify the Omarchy desktop visibly contains the Doubao Say window on the Microphone step with a Next button in its fixed top navigation.',
       );
       await agent.aiAct(
-        'Click Next in the Doubao Say fixed top navigation and wait until the current step is Trigger key.',
+        'Click Next in the Doubao Say fixed top navigation exactly once, then stop immediately. ' +
+          'Do not click Next a second time and do not wait for or verify the page transition.',
+      );
+      await agent.aiAct(
+        'Verify the current Doubao Say step is Trigger key. Do not click Previous or Next.',
       );
       await agent.aiAct(
         'Stay on the Trigger key step and do not click Previous or Next. Scroll down inside the light-gray central content panel until the Voice polishing heading and its controls are visible.',
@@ -80,7 +84,11 @@ describe.skipIf(process.env.OMARCHY_E2E !== 'true')(
         'Verify a visible message says the endpoint works and includes Synthetic endpoint response.',
       );
       await agent.aiAct(
-        'Click Next in the fixed top navigation and wait for the Voice test step.',
+        'Click Next in the fixed top navigation exactly once, then stop immediately. ' +
+          'Do not click Next a second time and do not wait for or verify the page transition.',
+      );
+      await agent.aiAct(
+        'Verify the current Doubao Say step is Voice test. Do not click Previous or Next.',
       );
       await agent.aiAct(
         'Verify the Voice test heading and introductory text are visible near the top of the content, proving that navigation reset the previous scroll position.',
