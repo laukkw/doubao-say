@@ -21,13 +21,15 @@ Omarchy 4.0.3 was installed successfully on a GitHub-hosted runner in
 The run took 13 minutes 41 seconds, including about 55 seconds to transfer the
 ISO.
 
-After that probe is stable, the next stages are:
+The manual experimental workflow now continues from that installed base image:
 
 1. Boot a throwaway overlay from the installed base image.
-2. install and enable this checkout as `md.lifeos.doubao-say` in the guest.
+2. Copy this checkout to `md.lifeos.doubao-say` in the guest and run Omarchy's
+   plugin validator.
 3. Run deterministic GTK UI fixtures with `@midscene/computer` on ordinary
    Ubuntu for every trusted change.
-4. Run a smaller Omarchy/Hyprland Midscene suite manually in the guest.
+4. Run the same focused Midscene onboarding suite through VNC in the real
+   Omarchy/Hyprland guest session.
 
 The ordinary Ubuntu stage maps the real GTK onboarding window inside the
 headless Midscene desktop. Its synthetic fixture performs no login, recording,
