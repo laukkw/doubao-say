@@ -86,7 +86,10 @@ describe.skipIf(process.env.OMARCHY_E2E !== 'true')(
         'Verify the Voice test heading and introductory text are visible near the top of the content, proving that navigation reset the previous scroll position.',
       );
       await agent.aiAct(
-        'Scroll within the content if needed and click Finish setup.',
+        'Scroll within the current Voice test content if needed and click Finish setup exactly once. ' +
+          'The click is successful when that same button changes to the disabled status ' +
+          'Setup completed by the synthetic E2E fixture. When that status appears, stop immediately, ' +
+          'do not search for Finish setup again, and do not click Previous or Next.',
       );
       await agent.aiAct(
         'Verify the Finish setup button changed to a disabled visible status saying Setup completed by the synthetic E2E fixture.',
