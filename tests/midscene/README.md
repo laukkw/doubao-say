@@ -1,8 +1,8 @@
 # Midscene E2E by Linux distribution
 
-Everything under this directory is developed on `ci/midscene-e2e`; it is not
-part of the release branch. GitHub Actions names the two suites after their
-tested distributions: Ubuntu 22.04 and Omarchy 4.0.3.
+GitHub Actions exposes two distribution-named suites: `Ubuntu 22.04` and
+`Omarchy 4.0.3`. Both run for trusted pull requests and relevant pushes to
+`main`, and both execute the same shared onboarding acceptance flow.
 
 The image-builder CI proves that a GitHub-hosted runner can install the exact
 official Omarchy ISO in a headless QEMU/KVM VM. It reuses Omarchy's own ISO
@@ -35,15 +35,17 @@ Omarchy Midscene flow, and 7 minutes 31 seconds for the whole job. The prior
 install-per-run workflow took 17 minutes 43 seconds, so the restored path saves
 10 minutes 12 seconds (about 58%).
 
-The manual Omarchy workflow now continues from that installed base image:
+The Omarchy workflow continues from that installed base image:
 
 1. Boot a throwaway overlay from the installed base image.
 2. Copy this checkout to `md.lifeos.doubao-say` in the guest and run Omarchy's
    plugin validator.
-3. Run deterministic GTK UI fixtures with Rstest and `@midscene/computer` on
-   ordinary Ubuntu for every trusted change.
-4. Run the same focused Midscene onboarding suite through VNC in the real
+3. Run the focused Midscene onboarding suite through VNC in the real
    Omarchy/Hyprland guest session.
+
+The Ubuntu workflow runs the deterministic GTK fixture directly with Rstest
+and `@midscene/computer`. Pull requests from forks are skipped because GitHub
+does not expose the required model secret to untrusted workflow code.
 
 Both distributions execute the same shared Midscene onboarding scenario. The
 Ubuntu stage maps the real GTK onboarding window inside the

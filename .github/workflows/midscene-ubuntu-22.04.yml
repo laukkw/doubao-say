@@ -1,28 +1,38 @@
-name: Midscene E2E · Ubuntu 22.04
-run-name: Ubuntu 22.04 · Midscene E2E
+name: Ubuntu 22.04
+run-name: Ubuntu 22.04
 
 on:
   push:
-    branches: [ci/midscene-e2e]
+    branches: [main]
     paths:
-      - ".github/workflows/midscene-e2e.yml"
+      - ".github/workflows/midscene-ubuntu-22.04.yml"
       - "tests/midscene/package.json"
       - "tests/midscene/package-lock.json"
       - "tests/midscene/gtk_fixture.py"
       - "tests/midscene/e2e/**"
-      - "src/doubao_input/ui/**"
+      - "src/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/midscene-ubuntu-22.04.yml"
+      - "tests/midscene/package.json"
+      - "tests/midscene/package-lock.json"
+      - "tests/midscene/gtk_fixture.py"
+      - "tests/midscene/e2e/**"
+      - "src/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: midscene-ubuntu-22-04-${{ github.ref }}
+  group: ubuntu-22-04-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   ubuntu-gtk:
-    name: Ubuntu 22.04
+    name: Midscene onboarding
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     env:

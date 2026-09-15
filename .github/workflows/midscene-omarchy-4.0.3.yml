@@ -1,19 +1,57 @@
-name: Midscene E2E · Omarchy 4.0.3
-run-name: Omarchy 4.0.3 · Midscene E2E
+name: Omarchy 4.0.3
+run-name: Omarchy 4.0.3
 
-on: workflow_dispatch
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/midscene-omarchy-4.0.3.yml"
+      - "tests/midscene/package.json"
+      - "tests/midscene/package-lock.json"
+      - "tests/midscene/gtk_fixture.py"
+      - "tests/midscene/e2e/**"
+      - "tests/midscene/run-omarchy-midscene.sh"
+      - "tests/midscene/restore-omarchy-vm.sh"
+      - "tests/midscene/omarchy-vm.env"
+      - "src/**"
+      - "manifest.json"
+      - "install.sh"
+      - "install-user.sh"
+      - "setup-omarchy.sh"
+      - "start.sh"
+      - "omarchy/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/midscene-omarchy-4.0.3.yml"
+      - "tests/midscene/package.json"
+      - "tests/midscene/package-lock.json"
+      - "tests/midscene/gtk_fixture.py"
+      - "tests/midscene/e2e/**"
+      - "tests/midscene/run-omarchy-midscene.sh"
+      - "tests/midscene/restore-omarchy-vm.sh"
+      - "tests/midscene/omarchy-vm.env"
+      - "src/**"
+      - "manifest.json"
+      - "install.sh"
+      - "install-user.sh"
+      - "setup-omarchy.sh"
+      - "start.sh"
+      - "omarchy/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
   packages: read
 
 concurrency:
-  group: midscene-omarchy-4-0-3-${{ github.ref }}
+  group: omarchy-4-0-3-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   omarchy-vm:
-    name: Omarchy 4.0.3
+    name: Midscene onboarding
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
