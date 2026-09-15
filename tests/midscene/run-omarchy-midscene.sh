@@ -95,7 +95,7 @@ ssh_guest true
 # guest's actual Hyprland session.
 echo "Creating the Omarchy plugin test payload."
 tar -C "$ROOT_DIR" --exclude='__pycache__' -cf "$PLUGIN_ARCHIVE" \
-  LICENSE README.md manifest.json install.sh install-user.sh setup-omarchy.sh start.sh \
+  LICENSE README.md manifest.json install.sh setup-omarchy.sh start.sh \
   omarchy src tests/midscene/gtk_fixture.py
 
 for _copy_attempt in 1 2 3 4 5; do

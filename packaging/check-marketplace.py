@@ -30,7 +30,7 @@ def check_documents(snapshot):
     version = tomllib.loads((snapshot / "pyproject.toml").read_text())["project"]["version"]
     if version != manifest["version"]:
         raise ValueError("Package and plugin versions differ")
-    for name in ("start.sh", "setup-omarchy.sh", "install-user.sh"):
+    for name in ("start.sh", "setup-omarchy.sh", "install.sh"):
         if not (snapshot / name).stat().st_mode & 0o111:
             raise ValueError(f"Launcher is not executable: {name}")
 

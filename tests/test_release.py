@@ -107,6 +107,10 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual([name for name in Settings.__dataclass_fields__ if name.endswith("_key")], ["doubao_key"])
 
     def test_unified_installer_has_valid_shell_syntax_and_help(self):
+        self.assertEqual(
+            sorted(path.name for path in ROOT.glob("install*.sh")),
+            ["install.sh"],
+        )
         subprocess.run(["bash", "-n", str(ROOT / "install.sh")], check=True)
         result = subprocess.run([str(ROOT / "install.sh"), "--help"], check=True,
                                 text=True, capture_output=True)
