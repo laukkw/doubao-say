@@ -1,4 +1,4 @@
-name: Midscene experimental
+name: Midscene E2E · Omarchy 4.0.3
 
 on: workflow_dispatch
 
@@ -7,12 +7,12 @@ permissions:
   packages: read
 
 concurrency:
-  group: midscene-experimental-${{ github.ref }}
+  group: midscene-omarchy-4-0-3-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   omarchy-vm:
-    name: Run Midscene in a real Omarchy VM
+    name: Omarchy 4.0.3
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
