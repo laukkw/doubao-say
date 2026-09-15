@@ -1,6 +1,10 @@
 name: Omarchy 4.0.3
 run-name: Omarchy 4.0.3
 
+concurrency:
+  group: midscene-model-e2e
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main]

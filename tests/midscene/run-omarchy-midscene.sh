@@ -166,8 +166,10 @@ for _test_attempt in 1 2 3; do
     echo "Omarchy Midscene failed for a non-network reason; not retrying." >&2
     exit 1
   fi
-  echo "Transient model connection failure on attempt $_test_attempt; retrying in 10 seconds." >&2
-  sleep 10
+  if [[ $_test_attempt -lt 3 ]]; then
+    echo "Transient model connection failure on attempt $_test_attempt; retrying in 10 seconds." >&2
+    sleep 10
+  fi
 done
 
 if [[ $MIDSCENE_PASSED != true ]]; then

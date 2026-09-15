@@ -1,6 +1,10 @@
 name: Ubuntu 22.04
 run-name: Ubuntu 22.04
 
+concurrency:
+  group: midscene-model-e2e
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main]
@@ -95,8 +99,10 @@ jobs:
               echo "Ubuntu Midscene failed for a non-network reason; not retrying." >&2
               exit 1
             fi
-            echo "Transient model connection failure on attempt ${test_attempt}; retrying in 10 seconds." >&2
-            sleep 10
+            if [[ $test_attempt -lt 3 ]]; then
+              echo "Transient model connection failure on attempt ${test_attempt}; retrying in 10 seconds." >&2
+              sleep 10
+            fi
           done
 
           if [[ $midscene_passed != true ]]; then
