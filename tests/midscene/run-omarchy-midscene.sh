@@ -124,7 +124,10 @@ echo "Validating md.lifeos.doubao-say with Omarchy."
 ssh_session "omarchy plugin validate '$PLUGIN_DIR'"
 
 echo "Installing the source checkout through its unified installer."
-ssh_session "'$PLUGIN_DIR/install.sh' --yes"
+# The official ISO harness creates this disposable account with password
+# "omarchy". Prime sudo in the same SSH shell so omarchy-pkg-add can run
+# non-interactively while still exercising install.sh's package path.
+ssh_session "printf '%s\\n' omarchy | sudo -S -v && '$PLUGIN_DIR/install.sh' --yes"
 ssh_guest "test -f /home/omarchy/.local/share/applications/doubao-say.desktop && \
   grep -Fq '$PLUGIN_DIR/start.sh' /home/omarchy/.local/share/applications/doubao-say.desktop"
 
