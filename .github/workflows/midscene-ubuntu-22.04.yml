@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/midscene-ubuntu-22.04.yml"
+      - ".github/workflows/deploy-midscene-report.yml"
+      - "scripts/build-pages-report.mjs"
+      - "tests/test_pages_report_history.mjs"
       - "tests/midscene/package.json"
       - "tests/midscene/package-lock.json"
       - "tests/midscene/gtk_fixture.py"
@@ -15,6 +18,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/midscene-ubuntu-22.04.yml"
+      - ".github/workflows/deploy-midscene-report.yml"
+      - "scripts/build-pages-report.mjs"
+      - "tests/test_pages_report_history.mjs"
       - "tests/midscene/package.json"
       - "tests/midscene/package-lock.json"
       - "tests/midscene/gtk_fixture.py"
@@ -140,3 +146,20 @@ jobs:
           path: tests/midscene/midscene_run/
           if-no-files-found: warn
           retention-days: 7
+
+  pages-report:
+    name: GitHub Pages report
+    needs: ubuntu-gtk
+    if: >-
+      needs.ubuntu-gtk.result == 'success' &&
+      github.event_name != 'pull_request' &&
+      github.ref_name == vars.PAGES_REPORT_BRANCH
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-midscene-report.yml
+    with:
+      artifact-name: midscene-ubuntu-22.04-e2e-report
+      report-label: Ubuntu 22.04
