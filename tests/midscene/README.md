@@ -45,11 +45,14 @@ The manual experimental workflow now continues from that installed base image:
    Omarchy/Hyprland guest session.
 
 The ordinary Ubuntu stage maps the real GTK onboarding window inside the
-headless Midscene desktop. Its synthetic fixture performs no login, recording,
-network request, paste, or user-settings read. Midscene visually navigates to
-the shortcut page, runs the fake endpoint check, verifies its visible feedback,
-continues to the voice page, checks that navigation reset the scroll position,
-and completes setup. The HTML replay is uploaded for every run.
+headless Midscene desktop. Its synthetic fixture starts signed out, opens an
+explicitly labelled CI-only sign-in window, and simulates a successful return
+without a network request or real credentials. It also performs no recording,
+paste, or user-settings read. Midscene verifies the automatic transition to the
+microphone step, visually navigates to the shortcut page, runs the fake endpoint
+check, verifies its visible feedback, continues to the voice page, checks that
+navigation reset the scroll position, and completes setup. The HTML replay is
+uploaded for every run.
 
 The AI stage needs a multimodal model credential. Its `MIDSCENE_MODEL_*`
 configuration is stored only as GitHub Actions Secrets; tests contain only

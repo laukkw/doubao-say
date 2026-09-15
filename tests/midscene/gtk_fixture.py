@@ -18,7 +18,7 @@ def main():
     Gtk.init()
     set_language("en")
     state = AppState()
-    state.login_status = LoginStatus.LOGGED_IN
+    state.login_status = LoginStatus.NOT_LOGGED_IN
     settings = Settings(
         polish_enabled=True,
         polish_base_url="https://example.invalid/v1",
@@ -35,6 +35,58 @@ def main():
         "onboarding_complete": False,
     }
     holder = {}
+
+    def show_synthetic_login():
+        existing = holder.get("login")
+        if existing:
+            existing.present()
+            return
+
+        login = Gtk.Window(title="Doubao Say — Synthetic sign-in")
+        login.set_default_size(520, 280)
+        login.set_resizable(False)
+        login.set_modal(True)
+        login.set_transient_for(holder["control"].window)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        for side in ("start", "end", "top", "bottom"):
+            getattr(content, "set_margin_" + side)(32)
+        login.set_child(content)
+
+        heading = Gtk.Label(
+            label="Synthetic Doubao sign-in",
+            xalign=0,
+        )
+        heading.add_css_class("title-2")
+        content.append(heading)
+        content.append(Gtk.Label(
+            label=(
+                "CI-only window. It makes no network request and uses no real "
+                "credentials."
+            ),
+            xalign=0,
+            wrap=True,
+        ))
+
+        success = Gtk.Button(label="Simulate successful sign-in")
+        success.add_css_class("suggested-action")
+        content.append(success)
+
+        def signed_in(*_args):
+            holder["login"] = None
+            login.destroy()
+            state.login_status = LoginStatus.LOGGED_IN
+            holder["control"].advance_after_login()
+
+        success.connect("clicked", signed_in)
+
+        def closed(*_args):
+            holder["login"] = None
+            return False
+
+        login.connect("close-request", closed)
+        holder["login"] = login
+        login.present()
 
     def test_endpoint(_settings, _key, done):
         def finish():
@@ -66,7 +118,7 @@ def main():
     )
     control = ControlWindow(
         state,
-        on_login_clicked=lambda: None,
+        on_login_clicked=show_synthetic_login,
         on_quit_clicked=lambda: None,
         on_check_mic_clicked=lambda: None,
         actions=actions,

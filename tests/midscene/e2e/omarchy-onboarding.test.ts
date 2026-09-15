@@ -65,7 +65,19 @@ describe.skipIf(process.env.OMARCHY_E2E !== 'true')(
 
     it('runs the onboarding flow in the real Omarchy desktop session', async () => {
       await agent.aiAct(
-        'Verify the Omarchy desktop visibly contains the Doubao Say window on the Microphone step with a Next button in its fixed top navigation.',
+        'Verify the Omarchy desktop visibly contains the Doubao Say window on the Sign in step, says the user is not signed in, and shows an Open Doubao sign-in button. Do not click anything.',
+      );
+      await agent.aiAct(
+        'In the Doubao Say window, click Open Doubao sign-in exactly once, then stop immediately.',
+      );
+      await agent.aiAct(
+        'Verify a Synthetic Doubao sign-in window is visible and explicitly says it is CI-only, makes no network request, and uses no real credentials. Do not click anything.',
+      );
+      await agent.aiAct(
+        'In the Synthetic Doubao sign-in window, click Simulate successful sign-in exactly once, then stop immediately.',
+      );
+      await agent.aiAct(
+        'Verify the synthetic sign-in window closed and the Doubao Say window automatically advanced to the Microphone step with a Next button in its fixed top navigation.',
       );
       await agent.aiAct(
         'Click Next in the Doubao Say fixed top navigation exactly once, then stop immediately. ' +

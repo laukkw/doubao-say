@@ -94,7 +94,19 @@ describe('Doubao Say onboarding', () => {
 
   it('navigates, reports endpoint feedback, resets scroll and completes setup', async () => {
     await agent.aiAct(
-      'Verify the visible Doubao Say window is on the Microphone step and has a Next button in the fixed top navigation.',
+      'Verify the visible Doubao Say window starts on the Sign in step, says the user is not signed in, and shows an Open Doubao sign-in button. Do not click anything.',
+    );
+    await agent.aiAct(
+      'Click Open Doubao sign-in exactly once, then stop immediately.',
+    );
+    await agent.aiAct(
+      'Verify a Synthetic Doubao sign-in window is visible and explicitly says it is CI-only, makes no network request, and uses no real credentials. Do not click anything.',
+    );
+    await agent.aiAct(
+      'In the Synthetic Doubao sign-in window, click Simulate successful sign-in exactly once, then stop immediately.',
+    );
+    await agent.aiAct(
+      'Verify the synthetic sign-in window closed and the visible Doubao Say window automatically advanced to the Microphone step with a Next button in the fixed top navigation.',
     );
 
     await agent.aiAct(
