@@ -98,7 +98,11 @@ describe('Doubao Say onboarding', () => {
     );
 
     await agent.aiAct(
-      'Click the Next button in the fixed top navigation and wait until the current step is Trigger key.',
+      'Click Next in the fixed top navigation exactly once, then stop immediately. ' +
+        'Do not click Next a second time and do not wait for or verify the page transition.',
+    );
+    await agent.aiAct(
+      'Verify the current Doubao Say step is Trigger key. Do not click Previous or Next.',
     );
     await agent.aiAct(
       'Stay on the Trigger key step and do not click Previous or Next. Scroll down inside the light-gray central content panel until the Voice polishing heading and its controls are visible.',
@@ -111,13 +115,20 @@ describe('Doubao Say onboarding', () => {
     );
 
     await agent.aiAct(
-      'Click the Next button in the fixed top navigation and wait for the Voice test step.',
+      'Click Next in the fixed top navigation exactly once, then stop immediately. ' +
+        'Do not click Next a second time and do not wait for or verify the page transition.',
+    );
+    await agent.aiAct(
+      'Verify the current Doubao Say step is Voice test. Do not click Previous or Next.',
     );
     await agent.aiAct(
       'Verify the Voice test heading and its introductory text are visible near the top of the content, showing that the page did not remain scrolled to the bottom.',
     );
     await agent.aiAct(
-      'Scroll within the content if needed and click the Finish setup button.',
+      'Scroll within the current Voice test content if needed and click Finish setup exactly once. ' +
+        'The click is successful when that same button changes to the disabled status ' +
+        'Setup completed by the synthetic E2E fixture. When that status appears, stop immediately, ' +
+        'do not search for Finish setup again, and do not click Previous or Next.',
     );
     await agent.aiAct(
       'Verify the Finish setup button changed to a disabled visible status saying Setup completed by the synthetic E2E fixture.',
