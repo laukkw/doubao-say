@@ -44,7 +44,11 @@ def main():
         GLib.timeout_add(350, finish)
 
     def complete_setup():
-        holder["control"].set_feedback("Setup completed by the synthetic E2E fixture.")
+        control = holder["control"]
+        message = "Setup completed by the synthetic E2E fixture."
+        control.set_feedback(message)
+        control._start_button.set_label(message)
+        control._start_button.set_sensitive(False)
 
     actions = SetupActions(
         test_voice=lambda: None,

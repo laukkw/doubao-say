@@ -120,7 +120,7 @@ describe('Doubao Say onboarding', () => {
       'Scroll within the content if needed and click the Finish setup button.',
     );
     await agent.aiAct(
-      'Verify the visible feedback says Setup completed by the synthetic E2E fixture.',
+      'Verify the Finish setup button changed to a disabled visible status saying Setup completed by the synthetic E2E fixture.',
     );
   });
 });
