@@ -18,8 +18,8 @@ After extracting an archive, run `./install.sh`; it detects missing Arch/Omarchy
 packages, asks before installing them, verifies the bundle and installs the bundled
 Python dependencies. `./install.sh --check` is read-only.
 
-For a future marketplace/Git installation, follow the **Git / marketplace installation**
-section there: add without enabling, explicitly run dependency setup, check the runtime,
+For a marketplace/Git installation, follow the **Git / marketplace installation**
+section there: add without enabling, run the installer, check the runtime,
 then finish onboarding. Removal differs from the offline archive. Do not mix both routes.
 
 Open **Doubao Say** from your application launcher:
@@ -93,7 +93,6 @@ Updates are never downloaded or installed automatically.
 Report bugs and suggestions through [GitHub Issues](https://github.com/quanru/doubao-say/issues).
 Include the version, desktop environment, steps to reproduce, and expected versus
 actual behavior. Remove API keys, cookies and personal transcripts from attachments.
-The issue tracker will become publicly accessible when the repository is published.
 
 ## Control center and recovery
 
@@ -162,8 +161,8 @@ install a local recognition engine or change another voice application's shortcu
    the plugin, or quit the standalone application, before upgrading.
 2. **Select an available source.** Prefer a user-provided checkout or matching
    release archive. The intended repository is
-   `https://github.com/quanru/doubao-say`; it may still be private or unpublished.
-   If inaccessible, report that and use the provided local source. Do not invent a
+   `https://github.com/quanru/doubao-say`. If it is inaccessible, report that and
+   use the provided local source. Do not invent a
    release URL or install an upstream project's package as Doubao Say.
 3. **Install using exactly one route below.** Keep the checkout or extracted
    installer at a known location. Use a normal desktop user; system package

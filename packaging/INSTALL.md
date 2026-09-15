@@ -26,7 +26,6 @@ may need their own udev rules and corresponding system packages.
 ## Git / marketplace installation (manual setup required)
 
 This route installs the same app from source, not the offline archive below.
-It is prepared for a future public repository; the repository is not published yet.
 Omarchy only clones the repository; it does not run setup hooks or install dependencies.
 Review the source first, add it **without enabling**, then explicitly install dependencies:
 
@@ -41,7 +40,7 @@ and may ask for an administrator password. It does not change group membership,
 udev rules, compositor shortcuts, or autostart. The read-only `--check` command
 checks runtime dependencies and reports device access without logging in, recording,
 uploading audio, or sending input. Device access is not a physical-key acceptance test.
-Complete any required logout/login and the application's five-step onboarding before
+Complete any required logout/login and the application's four-step onboarding before
 enabling the plugin. Do not create a virtual environment inside an installed plugin:
 Omarchy rejects symlinks and watches its tree for changes. Git installs use OS packages;
 offline bundles provide their own wheels/runtime. Their dependency versions can differ.

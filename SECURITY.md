@@ -28,13 +28,14 @@ credentials, settings and runtime deliberately; it is not account revocation.
 
 ## Reporting a vulnerability
 
-Report bugs and security concerns through
+Report ordinary bugs through
 [Doubao Say Issues](https://github.com/quanru/doubao-say/issues).
 Include the affected version, sanitized reproduction steps and impact. Remove
 API keys, cookies, personal transcripts and device identifiers before posting.
-For a vulnerability, start with a high-level description without exploit details
-or sensitive attachments so the maintainer can coordinate follow-up.
-This link becomes available to other users when the repository is published.
+Report vulnerabilities through the repository's private vulnerability-reporting
+form when it is available. Otherwise, open a sanitized issue asking the maintainer
+for a private contact channel. Do not publish exploit details or sensitive
+attachments in an issue.
 
 ## Release limits
 
@@ -45,6 +46,7 @@ all locally available Git refs and the Git-visible working tree. It requires a
 full clone. Scanning is not proof that all sensitive information is absent;
 review historical screenshots and personal data separately before publication.
 No independent penetration test or complete dependency license audit has been
-completed. These remain release gates, together with the
-upstream licensing clarification documented in NOTICE and clean-system installation
-and live desktop acceptance described in packaging/INSTALL.md.
+completed. Before release, review the exact dependency notices and complete the
+clean-system installation and live desktop acceptance described in
+packaging/INSTALL.md. Source provenance and inherited licensing are documented in
+NOTICE.

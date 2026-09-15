@@ -46,8 +46,9 @@
 - Guided setup completion requires successful microphone and voice checks.
 - Product identifiers and installation paths are consistently named Doubao Say.
 
-Public distribution, clean-desktop acceptance and upstream licensing clearance
-remain separate gates. The brand name has not been cleared for trademark use.
+Clean-desktop acceptance and marketplace approval remain separate from automated
+release checks. This is an unofficial client and does not imply endorsement by or
+affiliation with Doubao or ByteDance.
 
 ### Features
 
@@ -63,6 +64,8 @@ remain separate gates. The brand name has not been cleared for trademark use.
 - Explicit microphone RMS callbacks replace application method monkey patches.
 - Bundle verification rejects unlisted files and symlinks at all depths.
 - Preserve NOTICE in releases; contributor/security/architecture guides and
-  regression tests added. See SECURITY.md and NOTICE for unresolved release gates.
+  regression tests added. See SECURITY.md for release limitations and NOTICE for
+  source provenance and licensing.
 
-This is not a published release; the configured GitHub remote has not been pushed.
+This entry remains a release candidate until the `v1.0.0` tag workflow successfully
+publishes its GitHub Release.

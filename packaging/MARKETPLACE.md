@@ -1,7 +1,7 @@
 # Marketplace maintenance
 
 This is the publishing procedure, not a claim of marketplace acceptance.
-Repository: https://github.com/quanru/doubao-say (not yet published).
+Repository: https://github.com/quanru/doubao-say.
 Plugin ID: `md.lifeos.doubao-say`. Keep it stable across repository renames.
 Suggested category: **Productivity**. Tags: **ai, hyprland**.
 
@@ -19,7 +19,7 @@ Suggested category: **Productivity**. Tags: **ai, hyprland**.
    Run `.venv/bin/python tests/manual_source_install.py` for an isolated source
    snapshot, runtime check and launcher registration (also host-library based).
 4. On a separate clean Omarchy session, follow both documented installation routes
-   separately. For Git installation, explicitly set up OS packages before enabling.
+   separately. For Git installation, run `./install.sh` before enabling.
    Test disable/enable, crash recovery, upgrade and removal without losing settings.
 5. Manually verify login return and already-signed-in state; microphone-only check;
    trigger selection/capture; tap/hold/double-tap/Escape; exactly one overlay; live
@@ -50,8 +50,9 @@ Review may be required for these capabilities even if automated checks find no i
   finding personal content or sensitive metadata.
 - Finish clean-OS and physical-input acceptance. A host-only test is not a substitute.
 - Enable GitHub Issues and verify the public security-reporting route documented in SECURITY.md.
-- Obtain explicit approval to create/publish the repository and push. Search the
-  marketplace for the exact plugin ID; IDs are globally reserved, including retired listings.
+- Obtain explicit approval before changing repository visibility, creating a release
+  or submitting to the marketplace. Search the marketplace for the exact plugin ID;
+  IDs are globally reserved, including retired listings.
 - Commit reviewed changes, record the full SHA, repeat checks on that exact clean
   checkout, and prepare matching release assets. Current local checks cover uncommitted files.
 - Present the submission title/body and all declarations to the owner before sending.

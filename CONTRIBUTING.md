@@ -42,11 +42,12 @@ Use small conventional commits (`fix(login): ...`, `test(packaging): ...`). Expl
 the user-visible problem, approach, tests and remaining limitations in a PR.
 Run `make check` and the relevant manual acceptance before proposing a release.
 Run `make coverage` to enforce the whole-package branch-coverage floor and produce
-`coverage.xml`. The floor starts at 48%; GTK/WebKit and physical-device code is not
+`coverage.xml`. The floor starts at 55%; GTK/WebKit and physical-device code is not
 excluded, so improvements must come from real tests or better test seams.
 Read SECURITY.md and packaging/INSTALL.md before release. SHA256 checks detect file changes;
-they are not publisher signatures. Do not publish or create a remote without the
-maintainer's explicit approval. Preserve LICENSE and NOTICE in every bundle.
+they are not publisher signatures. Do not change repository visibility, create a
+release or push a release tag without the maintainer's explicit approval. Preserve
+LICENSE and NOTICE in every bundle.
 
 For marketplace preparation, use `make marketplace-check` with Gitleaks on PATH
 and follow [the publishing checklist](packaging/MARKETPLACE.md). Reports and local
