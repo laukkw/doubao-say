@@ -17,6 +17,20 @@ reviewing that list. The equivalent manual command is:
 omarchy pkg add python python-gobject python-cairo gtk4 gtk4-layer-shell webkitgtk-6.0 pipewire wl-clipboard portaudio
 ```
 
+Native X11 automatic paste also requires `xdotool` and `xclip`. The Arch installer
+adds them when run in an X11 session. On XFCE, a Menu-key trigger should be reserved
+as an application shortcut running `/usr/bin/true` to prevent its context menu
+from intercepting paste; see README.md.
+
+Optional clipboard preservation additionally needs a running CopyQ and `python-xlib`
+in the application's Python environment (`sudo pacman -S --needed copyq python-xlib`
+for Arch source installs, or the `.[x11]` Python extra). It is off by default and is
+not included in the offline bundle's required wheels. Enable **Preserve clipboard;
+skip CopyQ history** in Settings after installing these optional dependencies.
+Original formats are restored after the target reads the temporary text. New copies
+are kept; protection failures retain the result without destructive fallback.
+See README.md for supported sizes, read acknowledgement limits and private recovery files.
+
 Your user needs read access to keyboard events and write access to `/dev/uinput`.
 On this Omarchy setup, membership in `input` provides these permissions. If absent,
 run `sudo usermod -aG input "$USER"` and log out/in. Never run the application as root.
@@ -84,6 +98,9 @@ Open the launcher, sign in to Doubao, then focus a text field and press Fn.
 Tap to start/stop; hold to talk/release to finish; double-tap sends Enter.
 Choose another key in Settings if your keyboard does not expose Fn.
 Double-tap can submit a message or execute a terminal command.
+The microphone check immediately updates setup readiness; missing checks are shown
+beside Finish setup. Recent result offers copy, delayed retry and clear. Recognition
+failures keep available text in memory and show a notification; quitting loses that text.
 
 The control center checks the latest stable GitHub Release at most daily. A newer
 version produces a small red dot on the recording overlay and an Update button in

@@ -69,10 +69,16 @@ Modifier keys are logical choices: either the left or right physical key works.
 Your keyboard must report Fn as a Linux key; otherwise choose another key.
 
 - Tap to start; tap again to finish and paste.
-- Hold past the threshold to speak; release to finish and paste.
+- Hold past the threshold to confirm push-to-talk; release to finish and paste.
 - Select one preset, or choose **Record a shortcut…** to capture a custom combination such as Ctrl+Alt+Space. Only one trigger is active.
 - Press the active trigger twice to send Enter without dictation. This can submit messages or execute terminal commands.
 - Configure the hold threshold, double-tap interval, Enter gesture and startup.
+
+Key-down starts local capture. Audio collected during gesture arbitration stays in memory
+and is uploaded in order only after recording is confirmed. Double-tap Enter or cancellation
+discards unconfirmed audio without uploading it; the microphone is closed while idle.
+Device startup and recognition response still take time. Logs summarize audio levels in roughly
+one-second windows to help distinguish capture latency from recognition latency; no audio is saved.
 
 The bottom overlay shows an audio-driven blue mirrored waveform and live text.
 Final text is pasted after recording ends; target fields are not revised live.
@@ -98,8 +104,12 @@ actual behavior. Remove API keys, cookies and personal transcripts from attachme
 
 The control center contains the four setup pages, without a separate Home or
 completion page. Reopen it from the tray whenever you want to test or change a
-setting. The tray's **Copy recent result** action recovers the last in-memory
-result. Escape cancels recording or pending input.
+setting. **Recent result** at the top provides Copy, Retry in 3 seconds and Clear.
+Choose the target field before the retry; it never sends Enter. The tray also has
+**Copy recent result**. Incomplete setup lists missing checks beside Finish setup,
+and microphone completion refreshes readiness immediately. The microphone check detects
+input energy after startup, excluding DC offset; only the voice test verifies recognizable speech.
+Escape cancels recording or pending input.
 On Hyprland's Lua configuration, Escape is temporarily consumed during dictation,
 polishing and pending paste, so it does not also exit the foreground TUI. Idle
 Escape is unchanged. Existing global Escape bindings are not replaced; a warning
@@ -110,23 +120,67 @@ block the GTK interface. Cancellation stops remaining input; it cannot undo text
 or clipboard changes already delivered.
 Failed recognition can preserve partial text; failed paste preserves the result.
 This slot is memory-only, not a transcript history. Exiting loses it.
+Timeout and connection failures produce a notification and retain their reason in the control center.
+An empty response does not claim saved text: after the deadline, empty recognition responses point to
+microphone selection/input level. Logs count empty results separately from unrecognized messages.
+Normal recording completion appends 500 ms of silence so the service can resolve short utterances'
+last word; cancellation adds none. Quiet completion requires at least one second after audio drains
+and 500 ms without changed text. An explicit server finish can complete earlier; the stop deadline
+is five seconds. This bounded quiet fallback cannot prove that every late correction has arrived.
+Logs contain phase timings, audio/padding byte counts, message counts and character counts, not transcripts or recordings.
 
-Safe automatic paste currently requires a known, unchanged Hyprland window.
-Other compositors or an unknown target retain the result for manual copying.
-Focus is checked before paste and Enter, but Wayland cannot make that check and
-input delivery atomic. A sent paste shortcut is not proof that an app received it.
+Automatic paste supports Hyprland and native X11 desktops such as XFCE. It requires
+a known, unchanged target window; other Wayland compositors or an unknown target
+retain the result for manual copying. X11 requires `xdotool` and `xclip` (the Arch
+installer adds them when run in an X11 session). Text is pasted once at the current
+caret after recording ends: Ctrl+V in ordinary apps, Ctrl+Shift+V in recognized
+terminals. The recording overlay does not take focus on XFCE/X11.
+Focus is checked before paste and Enter, but the check and input delivery are not
+atomic. Moving the caret within the same window is not detected. A sent paste
+shortcut is not proof that an app received it.
+
+If using the Menu key on XFCE, reserve it in Settings → Keyboard → Application
+Shortcuts with `/usr/bin/true` as its command. This suppresses the context menu
+while Doubao Say still reads the hardware key. Remove that shortcut to restore
+the key's original menu action.
 
 Settings includes hardware key capture with timeout/cancel, PipeWire microphone
 selection, lower-frequency waveform updates, account controls, and an allowlisted
-diagnostic preview/copy action. Input capture is paused during key assignment.
+diagnostic preview/copy action. X11 and Wayland both prefer PipeWire capture so
+selected node names match the backend. Input capture is paused during key assignment.
 Key recording accepts ordinary keyboard keys and modifier combinations. The left
 and right variants of Ctrl, Shift, Alt and Meta are treated as the same key.
 Automatic detection of every desktop shortcut conflict is not supported.
 
+## Optional clipboard protection (X11 + CopyQ)
+
+Enable **Preserve clipboard; skip CopyQ history** in Settings. Off by default, this
+requires native X11, a running CopyQ and `python-xlib`. Arch source installs can use
+`sudo pacman -S --needed copyq python-xlib`. Python development installs may use
+`.[x11]`; CopyQ remains an external application.
+
+Protection snapshots text, HTML, images and other independent formats, then serves
+temporary text. Qt raster images use one lossless PNG snapshot; Qt supplies raster export
+formats again on restore, without storing redundant BMP/TIFF encodings. SVG and other
+independent data retain their original formats. XRes identifies the target process; restoration waits for its
+clipboard read acknowledgement instead of an arbitrary delay. New user copies are
+kept. A data read does not prove visible insertion; check the field before retrying a
+timeout. The hidden MIME flag excludes CopyQ history only. Explicit Copy still updates
+the clipboard.
+
+Limits: 128 advertised formats, 32 MiB of snapshot data after excluding Qt raster aliases,
+128 KiB UTF-8 dictation, and five seconds for a read acknowledgement. Unavailable protection retains the result without falling
+back to overwriting the clipboard. Snapshots normally stay in memory. If CopyQ fails
+during restoration, an owner-only (`0600`) `.copyq` recovery file is kept under
+`~/.local/state/doubao-say/` (or `XDG_STATE_HOME`), with its path in the error message.
+After restarting CopyQ, `copyq eval 'copy(unpack(input()));' < RECOVERY_FILE` restores
+that original clipboard; remove the file after confirming recovery.
+
 ## Privacy and limitations
 
 This unofficial client sends microphone audio to Doubao while recording and
-depends on its web protocol. The microphone-only check does not upload audio.
+depends on its web protocol. Recognition connects directly to Doubao and does not
+use environment-configured proxies. The microphone-only check does not upload audio.
 The hosted sign-in website controls its own language.
 When optional polishing is enabled, recognized text—including provisional text
 sent after a pause—is transmitted to the OpenAI-compatible endpoint configured by
@@ -196,7 +250,7 @@ when available and otherwise uses `sudo pacman -S --needed` on Arch.
 
 Keep this checkout in place: its desktop launcher points to it. Enable standalone
 startup in Settings only if the Omarchy plugin is disabled. For other distributions,
-resolve equivalent system packages first; automatic paste currently targets Hyprland.
+resolve equivalent system packages first; automatic paste supports Hyprland and native X11.
 
 **App or plugin release archive:**
 
@@ -240,6 +294,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for `make check`,
 [security reporting](SECURITY.md), and
 [changes](CHANGELOG.md). The legacy Debian scripts are not the release path for
 this candidate and have not passed the new installer acceptance.
+
+Opt-in checks run separately from unit tests:
+`timeout 45s env PYTHONPATH=src python tests/manual_x11.py --run` uses disposable
+windows for input and clipboard checks. `timeout 40s env PYTHONPATH=src python tests/manual_asr.py --run`
+sends bundled ALSA voice samples to Doubao to check final words and completion timing,
+without microphone capture. It requires saved sign-in, `ffmpeg` and ALSA samples.
+`timeout 30s env PYTHONPATH=src python tests/manual_startup.py --run` verifies that a complete
+phrase captured before gesture confirmation survives, using an isolated virtual PipeWire source.
+It requires PipeWire tools, saved sign-in and ALSA samples; no physical microphone is used.
+These checks do not replace repeated user dictation acceptance.
 
 ```sh
 PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
