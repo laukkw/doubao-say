@@ -29,6 +29,21 @@ class SettingsTest(unittest.TestCase):
             migrated = Settings.load()
             self.assertEqual(migrated.polish_prompt_zh, custom)
             self.assertEqual(migrated.polish_prompt_en, custom)
+    def test_input_method_defaults_and_roundtrip(self):
+        with tempfile.TemporaryDirectory() as root, patch.dict("os.environ", {"XDG_CONFIG_HOME": root}):
+            self.assertEqual(Settings.load().input_method, "clipboard")
+            path = Path(root) / "doubao-say/settings.json"
+            path.parent.mkdir()
+            path.write_text('{"language": "zh_CN"}')
+            self.assertEqual(Settings.load().input_method, "clipboard")
+            value = Settings.load()
+            value.input_method = "direct"
+            value.save()
+            self.assertEqual(Settings.load(), value)
+            for invalid in ("unknown", None, True):
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    Settings(input_method=invalid).validate()
+
     def test_defaults(self):
         Settings().validate()
 

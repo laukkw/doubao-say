@@ -62,6 +62,22 @@ endpoint errors also safely fall back to it.
 The API key is stored separately with owner-only permissions and never appears in
 diagnostics. Use **Test endpoint** before enabling.
 
+### Text input method
+
+Settings → Input → **Text input method** defaults to **Clipboard paste**,
+including for existing installations. Choose **Direct typing** to keep the
+clipboard unchanged. Install `wtype` separately; this mode requires a compatible
+Wayland virtual-keyboard implementation and has been tested on Hyprland.
+
+Direct typing sends characters gradually (about 8 seconds for 1,760 characters
+in our local test). Newlines and tabs act as Enter and Tab keys and can submit
+messages, execute terminal commands or move focus. Keep the target focused and
+avoid typing at the same time. Escape cancels remaining input; text already
+entered cannot be withdrawn. Focus changes stop further input on a best-effort
+basis. If direct typing fails or `wtype` is unavailable, the result stays in the
+app with no automatic clipboard fallback. Check for partial input before retrying.
+
+
 ## Gestures
 
 Default key: **Fn**. Change it to Ctrl, Shift, Alt, Meta, F8, F9, or Disabled.

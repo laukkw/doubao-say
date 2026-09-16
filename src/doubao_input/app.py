@@ -177,7 +177,8 @@ class DoubaoInputApp(Gtk.Application):
         self._overlay = Overlay(self.app_state)
         self._injector = Injector()
         self._delivery = Delivery(GLib.timeout_add, focused_target,
-            lambda text, target, cancelled: self._injector.inject(text, expected_target=target, cancelled=cancelled),
+            lambda text, target, cancelled: self._injector.inject(text, expected_target=target, cancelled=cancelled,
+                method=self.settings.input_method),
             lambda target, cancelled: self._injector.send_enter(expected_target=target, cancelled=cancelled),
             self._delivery_changed, InputWorker(GLib.idle_add))
         self._polisher = PolishManager(GLib.idle_add)
@@ -441,10 +442,10 @@ class DoubaoInputApp(Gtk.Application):
 
     def _submit_transcript(self, text, target, send_enter=False, *, original=None):
         self.recent.keep(text)
-        self._control.set_result(self.recent.text, tr("Ready to paste", "准备粘贴"))
+        self._control.set_result(self.recent.text, tr("Ready to input", "准备输入"))
         self._overlay.set_status(
-            tr("Polished · Pasting…", "润色完成 · 正在粘贴…") if original
-            else tr("Pasting…", "正在粘贴…"))
+            tr("Polished · Sending text…", "润色完成 · 正在输入…") if original
+            else tr("Sending text…", "正在输入…"))
         # Never hide/restore an arbitrary foreground settings window to force input.
         # A missing or changed target keeps the text in recovery instead.
         if not self._delivery.submit(text, target, send_enter):
@@ -501,12 +502,12 @@ class DoubaoInputApp(Gtk.Application):
     def _delivery_changed(self, status):
         self.recent.status = status
         messages = {
-            "pending": tr("Pasting…", "正在粘贴…"),
-            "attempted": tr("Paste sent. If text is missing, copy or retry below.", "已发送粘贴操作；若未出现文字，可在下方复制或重试。"),
+            "pending": tr("Sending text…", "正在输入…"),
+            "attempted": tr("Input sent. If text is missing, copy or retry below.", "已发送输入操作；若未出现文字，可在下方复制或重试。"),
             "target_changed": tr("Target changed or unavailable. Text kept; choose a target and retry.", "目标窗口已变化或无法确认。文字已保留，请选择目标后重试。"),
-            "failed": tr("Paste failed. Your text is kept here.", "粘贴失败，文字已保留。"),
-            "enter_skipped": tr("Paste attempted; Enter skipped because the target changed or input failed.", "已尝试粘贴；因目标变化或输入失败，未发送回车。"),
-            "cancelled": tr("Pending input cancelled.", "已取消待发送的输入。"),
+            "failed": tr("Input failed. Your text is kept here; some may already have been entered. For direct typing, check wtype and desktop support.", "输入失败，文字已保留；可能已有部分文字输入。使用直接输入时，请检查 wtype 和桌面支持。"),
+            "enter_skipped": tr("Input attempted; Enter skipped because the target changed or input failed.", "已尝试输入；因目标变化或输入失败，未发送回车。"),
+            "cancelled": tr("Input cancelled. Text already entered cannot be withdrawn.", "已取消输入，已输入的文字无法撤回。"),
         }
         self._control.set_result(self.recent.text, messages.get(status, status))
         self._control.set_feedback(messages.get(status, status))

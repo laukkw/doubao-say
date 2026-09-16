@@ -153,6 +153,8 @@ def write_atomic(path, data, mode=0o600):
             temporary.unlink(missing_ok=True)
 
 
+INPUT_METHODS = ("clipboard", "direct")
+
 WAVEFORM_STYLES = ("bars", "waves", "ripples", "basketball")
 
 
@@ -165,6 +167,7 @@ class Settings:
     hold_ms: int = 350
     double_ms: int = 300
     double_enter: bool = True
+    input_method: str = "clipboard"
     autostart: bool = False
     microphone: str = ""
     reduced_motion: bool = False
@@ -177,6 +180,8 @@ class Settings:
     onboarding_complete: bool = False
 
     def validate(self):
+        if self.input_method not in INPUT_METHODS:
+            raise ValueError(tr("Unsupported input method", "不支持的输入方式"))
         if self.waveform_style not in WAVEFORM_STYLES:
             raise ValueError(tr("Unsupported waveform style", "不支持的波纹样式"))
         if self.language not in LANGUAGES:
