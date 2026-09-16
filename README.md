@@ -91,14 +91,16 @@ diagnostics. Use **Test endpoint** before enabling.
 | Desktop session | Automatic clipboard paste | Direct typing |
 | --- | --- | --- |
 | Hyprland / Wayland | `wl-copy`; known, unchanged window required | Optional `wtype` |
-| Native X11 | `xclip` and `xdotool`; known, unchanged window/PID required | Unavailable; choose Clipboard paste |
+| Native X11 | Optional `xclip` and `xdotool`; known, unchanged window/PID required | Unavailable; choose Clipboard paste |
 | Other Wayland compositors | Retain the result for manual copying when focus cannot be verified | No supported automatic path |
 
 Native X11 uses Ctrl+V, or Ctrl+Shift+V for recognized terminal classes. Its
 floating overlay does not request activation; the window manager chooses its
 position. Hyprland keeps its bottom-anchored layer-shell overlay. PipeWire
 microphone selection works through `pw-record` on both desktops.
-XWayland is not treated as a native X11 session.
+XWayland is not treated as a native X11 session. The X11 helpers are probed at
+runtime; without either one, recognition still works and the result is retained
+for manual copying.
 
 ### Text input method
 

@@ -34,16 +34,30 @@ def check_system():
             results[namespace] = True
         except (ImportError, OSError, ValueError):
             results[namespace] = False
-    clipboard_tools = ("xdotool", "xclip") if is_x11() else ("wl-copy",)
+    clipboard_tools = () if is_x11() else ("wl-copy",)
     for command in ("pw-record", "pw-dump", *clipboard_tools):
         results[command] = shutil.which(command) is not None
     return results
 
 
+def check_optional_tools():
+    """Report helpers that unlock optional desktop capabilities."""
+    if not is_x11():
+        return {}
+    return {command: shutil.which(command) is not None
+            for command in ("xdotool", "xclip")}
+
+
 def main():
     results = check_runtime()
+    optional = check_optional_tools()
     for name, passed in results.items():
         print(f"{'OK' if passed else 'MISSING'}: {name}")
+    for name, passed in optional.items():
+        print(f"{'OK' if passed else 'OPTIONAL MISSING'}: {name}")
+    if optional and not all(optional.values()):
+        print("INFO: native X11 automatic paste needs optional xdotool and xclip; "
+              "recognized text is retained when they are unavailable")
     print("INFO: keyboard access " + ("available" if any(
         os.access(p, os.R_OK) for p in Path("/dev/input").glob("event*")) else "not available"))
     print("INFO: virtual keyboard access " + ("available" if os.access("/dev/uinput", os.W_OK) else "not available"))

@@ -52,15 +52,23 @@ class DesktopTest(TestCase):
                     self.assertIn("GdkX11" if x11 else "Gtk4LayerShell", results)
                     self.assertNotIn("Gtk4LayerShell" if x11 else "GdkX11", results)
                     self.assertNotIn("copyq", results)
+                    optional = preflight.check_optional_tools()
+                    self.assertEqual(set(optional), {"xdotool", "xclip"} if x11 else set())
+                    self.assertTrue(all(optional.values()))
                     self.assertNotIn("evdev", results)
                     self.assertIn("evdev", preflight.check_runtime())
 
-    def test_missing_x11_tool_is_reported(self):
+    def test_missing_x11_tool_is_optional_and_reported(self):
         with patch.dict(os.environ, SESSIONS[0][0], clear=True), \
              patch("gi.require_version"), \
              patch.object(preflight.importlib, "import_module"), \
              patch.object(preflight.shutil, "which", side_effect=lambda tool: None if tool == "xdotool" else tool):
-            self.assertFalse(preflight.check_system()["xdotool"])
+            self.assertNotIn("xdotool", preflight.check_system())
+            self.assertFalse(preflight.check_optional_tools()["xdotool"])
+            with patch.object(preflight, "check_runtime", return_value={"required": True}), \
+                 patch.object(preflight, "check_optional_tools",
+                              return_value={"xdotool": False, "xclip": True}):
+                self.assertEqual(preflight.main(), 0)
 
     @skipIf(os.geteuid() == 0, "The installer refuses root before checking dependencies")
     def test_installer_package_selection_matches_python_session_detection(self):
@@ -79,7 +87,7 @@ class DesktopTest(TestCase):
                     missing = next(line for line in result.stdout.splitlines()
                                    if line.startswith("Missing system packages:")).split()[3:]
                     for package in ("xdotool", "xclip"):
-                        self.assertEqual(package in missing, x11)
+                        self.assertNotIn(package, missing)
                     for package in ("wl-clipboard", "gtk4-layer-shell"):
                         self.assertEqual(package in missing, not x11)
                     self.assertNotIn("copyq", missing)

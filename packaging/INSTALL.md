@@ -13,10 +13,10 @@ This bundle includes Python dependency wheels for the Python/CPU version in its
 filename (for example cpython-314 and x86_64). System libraries are not bundled.
 The recommended `./install.sh` detects missing Arch/Omarchy packages, shows the
 exact list and asks before installing them. Use `./install.sh --yes` only after
-reviewing that list. Run it in the intended desktop session: native X11 selects
-`xdotool` and `xclip`; Wayland selects `gtk4-layer-shell` and `wl-clipboard`.
-The source installer, archive installer and runtime checks use the same desktop
-requirements. XWayland's `DISPLAY` does not select native X11.
+reviewing that list. Run it in the intended desktop session: Wayland selects
+`gtk4-layer-shell` and `wl-clipboard`; native X11 uses GTK's built-in backend.
+The source installer, archive installer and runtime checks use the same required
+desktop dependencies. XWayland's `DISPLAY` does not select native X11.
 
 The equivalent manual command for Hyprland/Omarchy is:
 
@@ -27,11 +27,15 @@ omarchy pkg add python python-gobject python-cairo gtk4 gtk4-layer-shell webkitg
 For a native X11 session on Arch:
 
 ```sh
-sudo pacman -S --needed python python-gobject python-cairo gtk4 webkitgtk-6.0 pipewire portaudio xdotool xclip
+sudo pacman -S --needed python python-gobject python-cairo gtk4 webkitgtk-6.0 pipewire portaudio
 ```
 
 X11 requires GTK's GdkX11 backend, but neither layer-shell nor wl-clipboard.
 PipeWire is used on X11 and Wayland so microphone node selection matches capture.
+Automatic paste on native X11 additionally uses the optional `xdotool` and
+`xclip` helpers. They are probed at runtime and can be installed on Arch with
+`sudo pacman -S --needed xdotool xclip`. If either is unavailable, installation
+and startup still succeed and recognized text is retained for manual copying.
 CopyQ is not required. Ordinary clipboard paste replaces clipboard contents and
 may be stored by a clipboard manager. Direct typing through optional `wtype`
 remains a Hyprland/Wayland feature; choose Clipboard paste on native X11.
