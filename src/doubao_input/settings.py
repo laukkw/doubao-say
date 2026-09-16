@@ -1,5 +1,5 @@
 """Portable, versioned user preferences (no authentication data)."""
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 import json
 import os
 from pathlib import Path
@@ -10,6 +10,8 @@ from doubao_input.i18n import LANGUAGES, tr
 
 KEY_CHOICES = {"Disabled": 0, "Fn": 464, "Ctrl": 29, "Shift": 42,
                "Alt": 56, "Meta": 125, "F8": 66, "F9": 67}
+REMOVED_SETTING_FIELDS = frozenset({"polish_undo_modifier", "polish_prompt"})
+ASR_PROVIDERS = ("doubao", "volcengine")
 CAPTURABLE_KEY_CODES = frozenset(range(2, 249)) | {464}
 MODIFIER_KEY_CODES = frozenset({29, 42, 54, 56, 97, 100, 125, 126})
 EQUIVALENT_KEY_GROUPS = (
@@ -153,6 +155,11 @@ def write_atomic(path, data, mode=0o600):
             temporary.unlink(missing_ok=True)
 
 
+INPUT_METHODS = ("clipboard", "direct")
+
+WAVEFORM_STYLES = ("bars", "waves", "ripples", "basketball")
+
+
 @dataclass
 class Settings:
     version: int = 1
@@ -162,9 +169,12 @@ class Settings:
     hold_ms: int = 350
     double_ms: int = 300
     double_enter: bool = True
+    input_method: str = "clipboard"
     autostart: bool = False
     microphone: str = ""
+    asr_provider: str = "doubao"
     reduced_motion: bool = False
+    waveform_style: str = "bars"
     polish_enabled: bool = False
     polish_base_url: str = "https://api.openai.com/v1"
     polish_model: str = "gpt-4o-mini"
@@ -173,10 +183,16 @@ class Settings:
     onboarding_complete: bool = False
 
     def validate(self):
+        if self.input_method not in INPUT_METHODS:
+            raise ValueError(tr("Unsupported input method", "不支持的输入方式"))
+        if self.waveform_style not in WAVEFORM_STYLES:
+            raise ValueError(tr("Unsupported waveform style", "不支持的波纹样式"))
         if self.language not in LANGUAGES:
             raise ValueError("Unsupported language")
         if not isinstance(self.microphone, str) or len(self.microphone) > 256 or any(c in self.microphone for c in '\n\r\x00'):
             raise ValueError(tr("Invalid microphone identifier", "麦克风标识无效"))
+        if self.asr_provider not in ASR_PROVIDERS:
+            raise ValueError(tr("Unsupported recognition service", "不支持的语音识别服务"))
         if type(self.reduced_motion) is not bool or type(self.onboarding_complete) is not bool:
             raise ValueError("Invalid preference type")
         if type(self.polish_enabled) is not bool:
@@ -233,6 +249,11 @@ class Settings:
                 # A user-edited single prompt remains effective for both languages.
                 values.setdefault("polish_prompt_zh", old_prompt)
                 values.setdefault("polish_prompt_en", old_prompt)
+        # A background plugin can briefly keep running older Python code while
+        # an update adds a preference. Keep all settings this version knows
+        # instead of discarding the entire file and falling back to defaults.
+        known = {item.name for item in fields(cls)}
+        values = {key: value for key, value in values.items() if key in known}
         key, modifiers = canonical_shortcut(values.get("doubao_key", 464),
                                             values.get("doubao_modifiers", ()))
         values["doubao_key"] = key
@@ -244,7 +265,20 @@ class Settings:
     def save(self):
         self.validate()
         path = config_dir() / "doubao-say" / "settings.json"
-        write_atomic(path, (json.dumps(asdict(self), ensure_ascii=False, indent=2) + "\n").encode())
+        known = {item.name for item in fields(self)}
+        unknown = {}
+        if path.exists():
+            try:
+                saved = json.loads(path.read_text())
+                if isinstance(saved, dict):
+                    unknown = {key: value for key, value in saved.items()
+                               if key not in known and key not in REMOVED_SETTING_FIELDS}
+            except (OSError, TypeError, ValueError):
+                # An explicit save replaces an unreadable file with validated
+                # settings; rollback is handled by apply_preferences.
+                pass
+        payload = {**unknown, **asdict(self)}
+        write_atomic(path, (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode())
 
 
 def desktop_entry(background=False):

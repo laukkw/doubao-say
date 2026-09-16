@@ -1,10 +1,42 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch
-from doubao_input.doubao.app_state import AppState, RecordingState
+from doubao_input.doubao.app_state import AppState, LoginStatus, RecordingState
 from doubao_input.doubao.transcription import TranscriptionManager
 
 
 class TranscriptionSessionTest(TestCase):
+    def test_official_backend_uses_its_credential_store_without_web_login(self):
+        client, store = Mock(), Mock()
+        credentials = object()
+        store.load.return_value = credentials
+        manager = TranscriptionManager(AppState(), asr_client=client,
+            credential_store=store, interactive_auth=False,
+            clear_rejected_credentials=False)
+        manager.audio_capture = Mock()
+        manager.app_state.login_status = LoginStatus.LOGGED_IN
+        manager._start_recording()
+        client.connect.assert_called_once_with(credentials)
+        self.assertIsNone(manager.on_params_needed)
+
+    def test_official_auth_failure_keeps_key_and_requests_settings(self):
+        client, store = Mock(), Mock()
+        manager = TranscriptionManager(AppState(), asr_client=client,
+            credential_store=store, interactive_auth=False,
+            clear_rejected_credentials=False)
+        manager.app_state.recording_state = RecordingState.RECORDING
+        manager.on_auth_expired = Mock()
+        manager._handle_auth_failure()
+        store.clear.assert_not_called()
+        manager.on_auth_expired.assert_called_once()
+        self.assertEqual(manager.app_state.login_status, LoginStatus.NOT_LOGGED_IN)
+
+    def test_backend_cannot_change_during_recording(self):
+        manager = self.manager()
+        manager.app_state.recording_state = RecordingState.RECORDING
+        with self.assertRaises(RuntimeError):
+            manager.configure_backend(Mock(), Mock(), interactive_auth=False,
+                                      clear_rejected_credentials=False)
+
     def test_timeout_never_pastes_even_with_pending_audio(self):
         for pending, connected in ((True, False), (True, True), (False, True)):
             with self.subTest(pending=pending, connected=connected):

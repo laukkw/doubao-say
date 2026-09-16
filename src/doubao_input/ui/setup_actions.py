@@ -19,3 +19,7 @@ class SetupActions:
     save_polish: Callable = lambda settings, key: None
     test_polish: Callable = lambda settings, key, done: None
     apply_microphone: Callable[[str], None] = lambda device: None
+    apply_asr_provider: Callable[[str], None] = lambda provider: None
+    asr_has_key: Callable[[], bool] = lambda: False
+    save_asr: Callable[[str], None] = lambda key: None
+    test_asr: Callable = lambda key, done: None

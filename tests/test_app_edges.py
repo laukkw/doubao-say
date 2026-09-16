@@ -3,7 +3,9 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from doubao_input.app import DoubaoInputApp
-from doubao_input.doubao.app_state import LoginStatus, RecordingState
+from doubao_input.doubao.app_state import AppState, LoginStatus, RecordingState
+from doubao_input.doubao.volcengine_asr_client import VolcengineASRClient
+from doubao_input.doubao.volcengine_credentials import VolcengineCredentialsStore
 from doubao_input.result import RecentResult
 from doubao_input.settings import Settings
 
@@ -135,11 +137,42 @@ class AppDeliveryEdgesTest(TestCase):
 
 
 class AppSetupEdgesTest(TestCase):
+    def test_official_provider_builds_noninteractive_backend(self):
+        app = SimpleNamespace(settings=Settings(asr_provider="volcengine"),
+                              app_state=AppState())
+        manager = DoubaoInputApp._new_transcription_manager(app)
+        self.addCleanup(manager.asr_client.disconnect)
+        self.assertIsInstance(manager.asr_client, VolcengineASRClient)
+        self.assertIs(manager.credential_store, VolcengineCredentialsStore)
+        self.assertFalse(manager.interactive_auth)
+        self.assertFalse(manager.clear_rejected_credentials)
+
+    def test_successful_official_key_probe_restores_readiness(self):
+        completed = Mock()
+        app = SimpleNamespace(_busy=lambda: False, _asr_probe=None,
+                              _sync_recognition_status=Mock(), _control=Mock())
+        with patch("doubao_input.app.VolcengineASRClient") as client_type, \
+             patch("doubao_input.app.GLib.idle_add") as idle_add:
+            probe = client_type.return_value
+            DoubaoInputApp._test_official_asr(app, "test-key", completed)
+            probe.on_open()
+        probe.disconnect.assert_called_once_with()
+        app._sync_recognition_status.assert_called_once_with()
+        app._control.refresh.assert_called_once_with()
+        idle_add.assert_called_once_with(completed, "API key accepted", "")
+
     def test_microphone_selection_uses_normal_settings_pipeline(self):
         app = SimpleNamespace(settings=Settings(microphone=""), apply_settings=Mock())
         DoubaoInputApp._apply_microphone(app, "desk-mic")
         saved = app.apply_settings.call_args.args[0]
         self.assertEqual(saved.microphone, "desk-mic")
+
+    def test_onboarding_provider_selection_uses_normal_settings_pipeline(self):
+        app = SimpleNamespace(settings=Settings(asr_provider="doubao"),
+                              apply_settings=Mock())
+        DoubaoInputApp._apply_asr_provider(app, "volcengine")
+        saved = app.apply_settings.call_args.args[0]
+        self.assertEqual(saved.asr_provider, "volcengine")
 
     def test_summary_contains_only_user_facing_state(self):
         app = SimpleNamespace(settings=Settings(doubao_key=100, microphone="desk-mic"),

@@ -43,11 +43,13 @@ class ProductTest(TestCase):
             "Preview ready · finish recording to paste")
 
     def test_diagnostics_do_not_include_device_or_custom_secrets(self):
-        data = report(Settings(microphone="private-device-identifier"))
+        data = report(Settings(microphone="private-device-identifier",
+                               asr_provider="volcengine"))
         self.assertNotIn("private-device-identifier", data)
         self.assertNotIn("cookies", data)
         self.assertNotIn("transcript", data)
         self.assertEqual(json.loads(data)["product_version"], "1.0.0")
+        self.assertEqual(json.loads(data)["recognition_provider"], "volcengine")
 
     def test_new_preference_validation(self):
         Settings(microphone="alsa_input.usb", reduced_motion=True, onboarding_complete=True).validate()

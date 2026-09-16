@@ -8,6 +8,7 @@ from gi.repository import GLib
 from doubao_input.app import DoubaoInputApp
 from doubao_input.ui.control_window import ControlWindow
 from doubao_input.ui.polish_settings import PolishSettings
+from doubao_input.ui.settings_window import SettingsWindow
 
 
 class SetupActionsTest(unittest.TestCase):
@@ -72,6 +73,58 @@ class SetupActionsTest(unittest.TestCase):
         control.set_feedback.assert_called_once_with("busy")
         control._refresh.assert_called_once_with()
 
+    def test_recognition_service_selection_applies_immediately(self):
+        control = SimpleNamespace(
+            _changing_asr_provider=False,
+            _asr_provider=Mock(),
+            _actions=Mock(),
+            set_feedback=Mock(),
+            _refresh=Mock(),
+        )
+        control._asr_provider.get_selected.return_value = 1
+        ControlWindow._asr_provider_changed(control)
+        control._actions.apply_asr_provider.assert_called_once_with("volcengine")
+        control.set_feedback.assert_called_once()
+        control._refresh.assert_not_called()
+
+    def test_rejected_recognition_service_selection_restores_saved_value(self):
+        control = SimpleNamespace(
+            _changing_asr_provider=False,
+            _asr_provider=Mock(),
+            _actions=Mock(),
+            set_feedback=Mock(),
+            _refresh=Mock(),
+        )
+        control._asr_provider.get_selected.return_value = 1
+        control._actions.apply_asr_provider.side_effect = ValueError("busy")
+        ControlWindow._asr_provider_changed(control)
+        control.set_feedback.assert_called_once_with("busy")
+        control._refresh.assert_called_once_with()
+
+    def test_onboarding_official_key_test_saves_first_and_shows_result(self):
+        control = SimpleNamespace(
+            _asr_testing=False,
+            _asr_key_save_source=0,
+            _asr_key=Mock(),
+            _asr_status=Mock(),
+            _asr_test_button=Mock(),
+            _actions=Mock(),
+        )
+        control._asr_key.get_text.return_value = "test-key"
+        control._save_asr_key_now = lambda: ControlWindow._save_asr_key_now(control)
+        control._asr_tested = lambda result, error: ControlWindow._asr_tested(
+            control, result, error)
+
+        ControlWindow._test_asr_clicked(control)
+
+        control._actions.save_asr.assert_called_once_with("test-key")
+        self.assertTrue(control._asr_testing)
+        completed = control._actions.test_asr.call_args.args[1]
+        completed("API key accepted", "")
+        self.assertFalse(control._asr_testing)
+        self.assertEqual(
+            control._asr_status.set_text.call_args.args[0], "API key accepted")
+
     def test_endpoint_test_has_adjacent_loading_and_success_feedback(self):
         view = SimpleNamespace(
             _testing=False,
@@ -130,3 +183,27 @@ class SetupActionsTest(unittest.TestCase):
 
         adjustment.set_value.assert_called_once_with(2.0)
         self.assertEqual(result, GLib.SOURCE_REMOVE)
+
+    def test_official_key_test_saves_first_and_has_adjacent_feedback(self):
+        view = SimpleNamespace(
+            _asr_testing=False,
+            _asr_has_key=False,
+            _save_asr=Mock(),
+            _test_asr=Mock(),
+            asr_key=Mock(),
+            asr_status=Mock(),
+            asr_test_button=Mock(),
+        )
+        view.asr_key.get_text.return_value = "test-key"
+        view._save_asr_key_now = lambda: SettingsWindow._save_asr_key_now(view)
+        view._asr_tested = lambda result, error: SettingsWindow._asr_tested(
+            view, result, error)
+
+        SettingsWindow._test_asr_clicked(view)
+
+        view._save_asr.assert_called_once_with("test-key")
+        self.assertTrue(view._asr_testing)
+        completed = view._test_asr.call_args.args[1]
+        completed("API key accepted", "")
+        self.assertFalse(view._asr_testing)
+        self.assertEqual(view.asr_status.set_text.call_args.args[0], "API key accepted")

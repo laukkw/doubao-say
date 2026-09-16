@@ -1,7 +1,8 @@
 # Contributing
 
-This is an unofficial Doubao-only Linux client. Do not add a second recognition
-engine, embed credentials or depend on personal Hyprland configuration.
+This is a Linux voice-input client with a Doubao web-account backend and an
+optional official Volcengine Seed ASR backend. Do not add further recognition
+engines, embed credentials or depend on personal Hyprland configuration.
 There is no published repository/release for this revision yet.
 
 ## Development
@@ -29,7 +30,8 @@ they share the production application ID to prevent duplicate overlays.
 - Audio callbacks run off-thread. Marshal GTK updates onto the GLib main loop.
 - Use AudioCapture's callback parameters, not private-field mutation or monkey patches.
 - Keep gesture timing independent of GTK so deterministic tests cover edge cases.
-- Persist credentials through ParamsStore; failure must not report login success.
+- Persist web credentials through ParamsStore and official API keys through the
+  owner-only VolcengineCredentialsStore; failure must not report readiness.
 - English is the default. Add English/Chinese UI strings together; preserve explicit
   language choices and document startup-only System locale resolution.
 - Preserve user configuration and upstream changes. Do not restart active recordings.

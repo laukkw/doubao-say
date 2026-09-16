@@ -1,17 +1,4 @@
-"""Text injection: copy-to-clipboard + simulate Ctrl+V via uinput.
-
-The only reliable way to "paste" into a native Wayland app on GNOME
-(Mutter does not implement the virtual-keyboard protocol that wtype
-needs) is to write text to the clipboard and then synthesize a
-Ctrl+V keypress via a /dev/uinput virtual keyboard.
-
-CJK text cannot be typed key-by-key through a virtual keyboard, so
-the clipboard path is mandatory for Chinese.
-
-The uinput device is opened lazily on first inject() and kept alive
-for the process lifetime to avoid the per-injection cost of creating
-and destroying a kernel device.
-"""
+"""Clipboard paste via uinput, or optional direct Unicode input via wtype."""
 from __future__ import annotations
 
 import logging
@@ -24,6 +11,7 @@ from typing import Optional
 
 from doubao_input.doubao.host_tools import command_candidates
 from doubao_input.inject.target import focused_target
+from doubao_input.inject.direct import type_text
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +62,13 @@ class Injector:
 
     # ---- public ----
 
-    def inject(self, text: str, use_shift: bool | None = None, *, expected_target=None, cancelled=lambda: False) -> bool:
-        """Copy text to clipboard then synthesize Ctrl+V (or Ctrl+Shift+V)."""
+    def inject(self, text: str, use_shift: bool | None = None, *, expected_target=None, cancelled=lambda: False, method="clipboard") -> bool:
+        """Deliver using the selected method; direct input never falls back to paste."""
+        if method == "direct":
+            with self._lock:
+                return type_text(text, expected_target, cancelled)
+        if method != "clipboard":
+            return False
         if not text or cancelled():
             return False
         if expected_target and focused_target() != expected_target:
