@@ -13,6 +13,7 @@ class FakeSocket:
         self.block_connect = block_connect
         self.entered = threading.Event()
         self.sent = threading.Event()
+        self.two_sent = threading.Event()
         self.chunks = []
         self.closed = False
 
@@ -29,6 +30,8 @@ class FakeSocket:
     async def send(self, data):
         self.chunks.append(data)
         self.sent.set()
+        if len(self.chunks) == 2:
+            self.two_sent.set()
 
     def __aiter__(self):
         return self
@@ -102,11 +105,12 @@ class SessionTest(unittest.TestCase):
         client.prepare()
         client.send_audio(b"first")
         client.finish_sending()
+        client.finish_sending()  # Idempotent: only one silence tail.
         client.send_audio(b"rejected")
         client.connect(self.params)
         session = client._session
-        self.assertTrue(socket.sent.wait(2))
-        self.assertEqual(socket.chunks, [b"first"])
+        self.assertTrue(socket.two_sent.wait(2))
+        self.assertEqual(socket.chunks, [b"first", bytes(16000)])
         self.stop(client, session)
         self.assertTrue(socket.closed)
 
@@ -130,6 +134,30 @@ class SessionTest(unittest.TestCase):
         self.assertTrue(old.loop.is_closed())
         self.stop(client, new)
 
+    def test_empty_capture_and_cancel_do_not_synthesize_audio(self):
+        client = self.client(FakeSocket())
+        client.prepare()
+        client.finish_sending()
+        self.assertFalse(client.has_pending_audio)
+        self.assertEqual(client.diagnostics()["audio_bytes"], 0)
+        self.assertEqual(client.diagnostics()["padding_bytes"], 0)
+        client.prepare()
+        client.send_audio(b"captured")
+        session = client._session
+        client.disconnect()
+        self.assertEqual(session.padding_bytes, 0)
+        self.assertFalse(session.audio)
+
+    def test_silence_tail_respects_queue_bound_and_capture_counters(self):
+        client = self.client(FakeSocket())
+        client.prepare()
+        audio = bytes(MAX_PENDING_BYTES - 16000)
+        client.send_audio(audio)
+        client.finish_sending()
+        self.assertEqual(client._session.pending_bytes, MAX_PENDING_BYTES)
+        self.assertEqual(client.diagnostics()["audio_bytes"], len(audio))
+        self.assertEqual(client.diagnostics()["padding_bytes"], 16000)
+
     def test_queue_is_bounded_before_connect(self):
         client = self.client(FakeSocket())
         errors = client.on_error = Mock()
@@ -144,6 +172,21 @@ class SessionTest(unittest.TestCase):
             client.connect(self.params)
             session = client._session
             self.stop(client, session)
+
+    def test_empty_results_are_valid_responses_and_do_not_prevent_later_text(self):
+        client = self.client(FakeSocket())
+        results = client.on_result = Mock()
+        client.prepare()
+        session = client._session
+        for message in ('{"event":"result","result":{"Text":""}}',
+                        '{"event":"result","result":{"Text":" "}}'):
+            self.assertFalse(client._handle_message(session, message))
+        results.assert_not_called()
+        self.assertEqual(client.diagnostics()["empty_results"], 2)
+        self.assertEqual(client.diagnostics()["ignored"], 0)
+        client._handle_message(session, '{"event":"result","result":{"Text":"words"}}')
+        results.assert_called_once_with("words")
+        self.assertEqual(client.diagnostics()["results"], 1)
 
     def test_invalid_messages_do_not_crash_or_leak_into_results(self):
         client = self.client(FakeSocket())

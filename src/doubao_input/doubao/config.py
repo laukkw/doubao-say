@@ -71,7 +71,7 @@ def get_keyboard_config_path() -> Path:
 
 # --- Timeouts ---
 
-STOP_SAFETY_TIMEOUT = 1.0  # seconds
+STOP_SAFETY_TIMEOUT = 5.0  # maximum wait after stopping capture
 DEBOUNCE_INTERVAL = 0.3  # seconds
 PASTE_DELAY = 0.05  # seconds between copy and paste simulation
 AUTH_EXPIRY_DELAY = 2.0  # seconds before resetting after auth error

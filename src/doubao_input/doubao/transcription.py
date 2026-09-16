@@ -24,9 +24,10 @@ from doubao_input.i18n import tr
 
 # Minimum press duration to be treated as a real PTT (vs accidental tap).
 MIN_PRESS_DURATION = 0.15  # seconds
-# Doubao sends several corrections after release. Commit only once that result
-# stream has stayed quiet briefly, matching the current upstream client.
-FINAL_RESULT_QUIET_PERIOD = 0.25
+# ponytail: the observed service doesn't always send finish. Use a bounded quiet
+# fallback after audio drains; prefer a documented final-result marker when available.
+FINAL_RESULT_QUIET_PERIOD = 0.5
+FINAL_AUDIO_SETTLE_PERIOD = 1.0
 
 logger = logging.getLogger(__name__)
 
@@ -184,13 +185,31 @@ class TranscriptionManager:
     def _safety_timeout(self) -> bool:
         self.safety_timer_id = None
         if self.app_state.recording_state == RecordingState.STOPPING:
-            logger.warning("Recognition timed out; retaining partial text without submitting")
-            if self.on_recover and self.app_state.transcription_text.strip():
+            stats = self.asr_client.diagnostics()
+            logger.warning("Recognition wait expired; partial_chars=%d stats=%s",
+                           len(self.app_state.transcription_text), stats)
+            has_text = bool(self.app_state.transcription_text.strip())
+            if self.on_recover and has_text:
                 self.on_recover(self.app_state.transcription_text)
             self._reset_to_idle()
-            self.app_state.error_message = tr(
-                "Recognition timed out. Any partial text was kept; review it before sending.",
-                "识别超时，已有文本已保留，请检查后手动发送。")
+            if has_text:
+                message = tr("Recognition timed out. Partial text is in Recent result; review it before sending.",
+                             "识别超时，已有文字保留在“最近识别结果”中，请检查后再发送。")
+            elif stats.get("audio_bytes") == 0:
+                message = tr("No microphone audio received. Check the selected input device.",
+                             "未收到麦克风音频，请检查所选输入设备。")
+            elif stats.get("connected") is False:
+                message = tr("Recognition connection timed out. Check the network and try again.",
+                             "识别连接超时，请检查网络后重试。")
+            elif (stats.get("empty_results", 0) > 0 and stats.get("pending_bytes") == 0
+                  and stats.get("sending") is False):
+                message = tr(
+                    "Doubao returned only empty results. No text was produced; check the selected microphone and input level.",
+                    "豆包仅返回空结果，本次没有生成文字。请检查所选麦克风和输入音量。")
+            else:
+                message = tr("Recognition timed out without receiving text. Please try again.",
+                             "识别超时，本次没有收到文字，请稍后重试。")
+            self.app_state.error_message = message
         self.safety_timer_id = None
         return GLib.SOURCE_REMOVE
 
@@ -202,12 +221,13 @@ class TranscriptionManager:
         return GLib.SOURCE_REMOVE
 
     def _on_asr_result(self, text: str) -> bool:
+        changed = text != self.app_state.transcription_text
         self.app_state.transcription_text = text
         if self.on_overlay_update:
             self.on_overlay_update(text)
         if self.app_state.recording_state == RecordingState.STARTING:
             self._set_state(RecordingState.RECORDING)
-        if self.awaiting_final_result:
+        if self.awaiting_final_result and changed:
             self._schedule_final_completion()
         return GLib.SOURCE_REMOVE
 
@@ -233,7 +253,8 @@ class TranscriptionManager:
     def _finish_after_quiet_period(self) -> bool:
         self.final_result_timer_id = None
         if self.awaiting_final_result:
-            if self.asr_client.has_pending_audio or not self.asr_client.is_connected:
+            if (self.asr_client.has_pending_audio or not self.asr_client.is_connected
+                    or self.asr_client.drained_for < FINAL_AUDIO_SETTLE_PERIOD):
                 self._schedule_final_completion()
                 return GLib.SOURCE_REMOVE
             logger.info("Result stream quiet, completing transcription")
@@ -272,7 +293,8 @@ class TranscriptionManager:
             logger.info("Release-to-finalization: %.0f ms",
                         (time.monotonic() - self._stopped_at) * 1000)
         text = self.app_state.transcription_text.strip()
-        logger.info("Completing transcription (%d characters)", len(text))
+        logger.info("Completing transcription (%d characters); stats=%s",
+                    len(text), self.asr_client.diagnostics())
         if text and self.on_paste:
             self.on_paste(text)
         elif not text and self.on_empty_complete:

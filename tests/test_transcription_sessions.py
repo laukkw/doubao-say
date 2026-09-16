@@ -21,6 +21,27 @@ class TranscriptionSessionTest(TestCase):
                 self.assertEqual(manager.app_state.recording_state, RecordingState.IDLE)
                 self.assertTrue(manager.app_state.error_message)
 
+    def test_empty_timeout_does_not_claim_that_text_was_saved(self):
+        for empty_results in (0, 14):
+            with self.subTest(empty_results=empty_results):
+                manager = self.manager()
+                manager.app_state.recording_state = RecordingState.STOPPING
+                manager.asr_client.diagnostics.return_value = dict(
+                    audio_bytes=98304, connected=True, pending_bytes=0, sending=False,
+                    empty_results=empty_results)
+                manager.on_recover, manager.on_paste = Mock(), Mock()
+                with patch("doubao_input.doubao.transcription.tr", side_effect=lambda en, zh: en):
+                    manager._safety_timeout()
+                message = manager.app_state.error_message
+                self.assertNotIn("Recent result", message)
+                if empty_results:
+                    self.assertIn("only empty results", message)
+                    self.assertIn("No text was produced", message)
+                else:
+                    self.assertIn("without receiving text", message)
+                manager.on_recover.assert_not_called()
+                manager.on_paste.assert_not_called()
+
     def test_capture_finishes_before_asr_stops_accepting(self):
         manager = self.manager()
         order = Mock()
@@ -53,6 +74,8 @@ class TranscriptionSessionTest(TestCase):
     def manager(self):
         manager = TranscriptionManager(AppState())
         manager.asr_client = Mock()
+        manager.asr_client.drained_for = 2.0
+        manager.asr_client.diagnostics.return_value = {}
         manager.audio_capture = Mock()
         manager._wire_asr_callbacks()
         return manager
@@ -109,14 +132,14 @@ class TranscriptionSessionTest(TestCase):
         manager.app_state.transcription_text = "already recognized"
         manager._later = Mock(side_effect=[11, 12])
         manager._stop_recording()
-        self.assertEqual([c.args[0] for c in manager._later.call_args_list], [1000, 250])
+        self.assertEqual([c.args[0] for c in manager._later.call_args_list], [5000, 500])
         self.assertTrue(manager.awaiting_final_result)
 
     def test_empty_release_keeps_safety_wait(self):
         manager = self.manager()
         manager._later = Mock(return_value=11)
         manager._stop_recording()
-        manager._later.assert_called_once_with(1000, manager._safety_timeout)
+        manager._later.assert_called_once_with(5000, manager._safety_timeout)
 
     def test_quiet_timer_does_not_finish_with_unsent_audio(self):
         manager = self.manager()
@@ -136,6 +159,26 @@ class TranscriptionSessionTest(TestCase):
         manager._complete_transcription = Mock()
         manager._finish_after_quiet_period()
         manager._complete_transcription.assert_called_once()
+
+    def test_recently_drained_audio_gets_time_for_server_processing(self):
+        manager = self.manager()
+        manager.awaiting_final_result = True
+        manager.asr_client.has_pending_audio = False
+        manager.asr_client.is_connected = True
+        manager.asr_client.drained_for = 0.2
+        manager._schedule_final_completion = Mock()
+        manager._complete_transcription = Mock()
+        manager._finish_after_quiet_period()
+        manager._schedule_final_completion.assert_called_once()
+        manager._complete_transcription.assert_not_called()
+
+    def test_duplicate_result_does_not_extend_quiet_wait(self):
+        manager = self.manager()
+        manager.awaiting_final_result = True
+        manager.app_state.transcription_text = "same words"
+        manager._schedule_final_completion = Mock()
+        manager._on_asr_result("same words")
+        manager._schedule_final_completion.assert_not_called()
 
     def test_trailing_correction_restarts_quiet_timer(self):
         manager = self.manager()
