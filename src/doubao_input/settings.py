@@ -10,6 +10,7 @@ from doubao_input.i18n import LANGUAGES, tr
 
 KEY_CHOICES = {"Disabled": 0, "Fn": 464, "Ctrl": 29, "Shift": 42,
                "Alt": 56, "Meta": 125, "F8": 66, "F9": 67}
+ASR_PROVIDERS = ("doubao", "volcengine")
 CAPTURABLE_KEY_CODES = frozenset(range(2, 249)) | {464}
 MODIFIER_KEY_CODES = frozenset({29, 42, 54, 56, 97, 100, 125, 126})
 EQUIVALENT_KEY_GROUPS = (
@@ -167,6 +168,7 @@ class Settings:
     double_enter: bool = True
     autostart: bool = False
     microphone: str = ""
+    asr_provider: str = "doubao"
     reduced_motion: bool = False
     waveform_style: str = "bars"
     polish_enabled: bool = False
@@ -183,6 +185,8 @@ class Settings:
             raise ValueError("Unsupported language")
         if not isinstance(self.microphone, str) or len(self.microphone) > 256 or any(c in self.microphone for c in '\n\r\x00'):
             raise ValueError(tr("Invalid microphone identifier", "麦克风标识无效"))
+        if self.asr_provider not in ASR_PROVIDERS:
+            raise ValueError(tr("Unsupported recognition service", "不支持的语音识别服务"))
         if type(self.reduced_motion) is not bool or type(self.onboarding_complete) is not bool:
             raise ValueError("Invalid preference type")
         if type(self.polish_enabled) is not bool:
