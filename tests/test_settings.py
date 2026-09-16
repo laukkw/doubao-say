@@ -31,6 +31,16 @@ class SettingsTest(unittest.TestCase):
             self.assertEqual(migrated.polish_prompt_en, custom)
     def test_defaults(self):
         Settings().validate()
+        self.assertEqual(Settings().asr_provider, "doubao")
+
+    def test_recognition_provider_validation_and_roundtrip(self):
+        with tempfile.TemporaryDirectory() as root, patch.dict(
+                "os.environ", {"XDG_CONFIG_HOME": root}):
+            expected = Settings(asr_provider="volcengine")
+            expected.save()
+            self.assertEqual(Settings.load(), expected)
+        with self.assertRaises(ValueError):
+            Settings(asr_provider="unknown").validate()
 
     def test_invalid_key(self):
         with self.assertRaises(ValueError):

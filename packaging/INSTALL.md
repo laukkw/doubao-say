@@ -3,7 +3,9 @@
 English interface by default. Select System, English or 简体中文 in Settings;
 the choice saves and applies automatically. System follows the session locale (Chinese → Simplified Chinese;
 unsupported languages → English). Manual choices override the system locale.
-This is a standalone Doubao cloud voice-input application.
+This is a standalone cloud voice-input application. Doubao web-account recognition
+is the default; an optional user-supplied Volcengine Seed ASR API key can be selected
+in Settings.
 
 ## Requirements
 
@@ -80,7 +82,9 @@ Existing installations are backed up, not erased. Do not delete the installed
 directory. Keep the original extracted installer for uninstall, or extract the
 matching archive again; do not run install.py from the managed installation tree.
 
-Open the launcher, sign in to Doubao, then focus a text field and press Fn.
+Open the launcher and either sign in to Doubao or select the Volcengine official
+API backend in Settings and add/test your speech API key. Then focus a text field
+and press Fn.
 Tap to start/stop; hold to talk/release to finish; double-tap sends Enter.
 Choose another key in Settings if your keyboard does not expose Fn.
 Double-tap can submit a message or execute a terminal command.
@@ -123,8 +127,10 @@ Turn off desktop autostart in Settings before uninstalling the standalone app.
 
 ## Privacy
 
-Microphone audio is sent to Doubao during recording. This unofficial application
-depends on Doubao's web protocol. No authentication data, microphone recordings,
+Microphone audio is sent to the selected recognition provider during recording.
+The default backend depends on Doubao's unofficial web protocol; the optional
+official backend uses the user's Volcengine API account and is billed under its
+terms. No authentication data, microphone recordings,
 personal transcripts or development virtual environment are included in this bundle.
 If optional polishing is enabled, recognized and provisional text is sent to the
 user-configured OpenAI-compatible endpoint and is subject to that provider's terms.

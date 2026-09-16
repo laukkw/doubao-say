@@ -1,11 +1,14 @@
 # Security and privacy
 
-This client uses an unofficial Doubao web protocol and requests broad keyboard
-device access for global triggers. Use a normal user, never root. Review input
+The default backend uses an unofficial Doubao web protocol; the optional backend
+uses the official Volcengine Seed ASR API with a user-supplied key. The app also
+requests broad keyboard device access for global triggers. Use a normal user,
+never root. Review input
 group membership and `/dev/uinput` permissions before installation.
 
-Recordings are sent to Doubao for recognition; the microphone-only check stays
-local. The application does not intentionally retain recordings or transcripts
+Recordings are sent to the selected provider for recognition; the microphone-only
+check stays local. Volcengine API usage and data handling follow the user's
+account and provider terms. The application does not intentionally retain recordings or transcripts
 on disk. The clipboard and target application may retain text. Older development
 logs can contain transcript excerpts: never attach them without review.
 
@@ -21,8 +24,10 @@ owner-only cache contains only the check time and public release tag. The check
 does not send settings, account data, transcripts or a device identifier, and it
 does not download or install an update.
 
-Sign-in cookies are stored locally, not encrypted. New saves are atomic and mode
-0600; loading valid older credentials restricts their permissions. Anyone with
+Sign-in cookies and the optional Volcengine API key are stored locally in separate,
+unencrypted files. New saves are atomic and mode 0600; loading valid older
+credentials restricts their permissions. Neither credential is included in
+diagnostics. Anyone with
 access to your account or root privileges may still read them. Uninstall preserves
 credentials, settings and runtime deliberately; it is not account revocation.
 
