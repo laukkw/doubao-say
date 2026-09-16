@@ -6,7 +6,7 @@ from doubao_input.i18n import LANGUAGES, tr
 from doubao_input.doubao.devices import microphones
 from doubao_input.diagnostics import report
 from doubao_input.product import VERSION
-from doubao_input.settings import WAVEFORM_STYLES
+from doubao_input.settings import INPUT_METHODS, WAVEFORM_STYLES
 from doubao_input.ui.style import apply_window_style
 from doubao_input.settings import ASR_PROVIDERS
 
@@ -114,6 +114,17 @@ class SettingsWindow:
         box.append(self.asr_details)
 
         section(tr("Input", "输入"))
+        self.input_method = Gtk.DropDown.new_from_strings([
+            tr("Clipboard paste (default)", "剪贴板粘贴（默认）"),
+            tr("Direct typing", "直接输入"),
+        ])
+        self.input_method.set_selected(INPUT_METHODS.index(settings.input_method))
+        row(tr("Text input method", "文字输入方式"), self.input_method)
+        self.direct_hint = Gtk.Label(xalign=0, wrap=True, label=tr(
+            "Direct typing keeps the clipboard unchanged and requires wtype and a compatible Wayland desktop (tested on Hyprland). Long text takes longer. Newlines and tabs act as Enter and Tab keys and may submit messages or move focus. Failure keeps your text without falling back to paste; some characters may already have been typed.",
+            "直接输入不会改动剪贴板，需要安装 wtype 并使用兼容的 Wayland 桌面（已在 Hyprland 验证）。长文本输入较慢；换行和制表符相当于回车和 Tab，可能发送消息或切换焦点。失败时保留文字，不自动转为粘贴；可能已有部分文字输入。"))
+        self.direct_hint.set_visible(settings.input_method == "direct")
+        box.append(self.direct_hint)
         def use_key(key, modifiers=()):
             if apply_key:
                 apply_key(key, modifiers)
@@ -221,6 +232,7 @@ class SettingsWindow:
         self.asr_provider.connect("notify::selected", self._asr_provider_changed)
         self.asr_key.connect("changed", self._queue_asr_key_save)
         self.autostart.connect("notify::active", self._changed)
+        self.input_method.connect("notify::selected", self._changed)
         self.enter.connect("notify::active", self._changed)
         self.hold.connect("value-changed", self._changed)
         self.double.connect("value-changed", self._changed)
@@ -239,6 +251,7 @@ class SettingsWindow:
             hold_ms=self.hold.get_value_as_int(),
             double_ms=self.double.get_value_as_int(),
             double_enter=self.enter.get_active(),
+            input_method=INPUT_METHODS[self.input_method.get_selected()],
             autostart=self.autostart.get_active(),
             microphone=self.sources[self.microphone.get_selected()][0],
             reduced_motion=self.motion.get_active(),
@@ -252,6 +265,7 @@ class SettingsWindow:
             self._sync_provider_details()
             self.autostart.set_active(self._settings.autostart)
             self.enter.set_active(self._settings.double_enter)
+            self.input_method.set_selected(INPUT_METHODS.index(self._settings.input_method))
             self.hold.set_value(self._settings.hold_ms)
             self.double.set_value(self._settings.double_ms)
             self.microphone.set_selected(
@@ -283,6 +297,7 @@ class SettingsWindow:
 
     def _changed(self, *_):
         self._save_current()
+        self.direct_hint.set_visible(self._settings.input_method == "direct")
 
     def _language_changed(self, *_):
         previous = self._settings.language

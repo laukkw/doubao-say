@@ -2,6 +2,7 @@
 
 ## 1.0.0 — release candidate
 
+- Add an optional direct typing mode using wtype without touching the clipboard; clipboard paste remains the default.
 - Added one `install.sh` entry point for source checkouts and release archives, with explicit Arch/Omarchy dependency detection, confirmation and read-only checks.
 - Replaced the recording overlay's large update arrow with a compact red status dot.
 - Update caches are scoped to the installed application version, preventing stale development-version notifications after an upgrade, downgrade or version reset.

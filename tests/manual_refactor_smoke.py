@@ -16,7 +16,7 @@ from gi.repository import GLib, Gtk
 from doubao_input.app import DoubaoInputApp
 from doubao_input.i18n import set_language
 from doubao_input.doubao.volcengine_credentials import VolcengineCredentialsStore
-from doubao_input.settings import Settings, WAVEFORM_STYLES
+from doubao_input.settings import Settings, INPUT_METHODS, WAVEFORM_STYLES
 from doubao_input.ui.settings_window import SettingsWindow
 
 
@@ -70,6 +70,19 @@ def main():
                 assert app.settings.waveform_style == style
                 assert app._overlay.waveform_style == style
                 assert Settings.load().waveform_style == style
+            for index, method in enumerate(INPUT_METHODS):
+                window.input_method.set_selected(index)
+                assert window.direct_hint.get_visible() == (method == "direct")
+                assert app.settings.input_method == method
+                assert Settings.load().input_method == method
+                app._delivery.paste("routing probe", "fake-target", lambda: False)
+                assert injector.return_value.inject.call_args.kwargs["method"] == method
+            # Saving while busy must restore the selection and saved preference.
+            with patch.object(app, "_busy", return_value=True):
+                window.input_method.set_selected(0)
+                assert window.input_method.get_selected() == 1
+                assert Settings.load().input_method == "direct"
+            injector.return_value.inject.reset_mock()
             picker = window.trigger_picker
             preset = 29 if app.settings.doubao_key != 29 else 56
             preset_index = [entry[1] for entry in picker.entries].index(preset)
