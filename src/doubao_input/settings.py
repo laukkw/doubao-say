@@ -165,6 +165,7 @@ class Settings:
     autostart: bool = False
     microphone: str = ""
     reduced_motion: bool = False
+    preserve_clipboard: bool = False
     polish_enabled: bool = False
     polish_base_url: str = "https://api.openai.com/v1"
     polish_model: str = "gpt-4o-mini"
@@ -177,7 +178,8 @@ class Settings:
             raise ValueError("Unsupported language")
         if not isinstance(self.microphone, str) or len(self.microphone) > 256 or any(c in self.microphone for c in '\n\r\x00'):
             raise ValueError(tr("Invalid microphone identifier", "麦克风标识无效"))
-        if type(self.reduced_motion) is not bool or type(self.onboarding_complete) is not bool:
+        if (type(self.reduced_motion) is not bool or type(self.onboarding_complete) is not bool
+                or type(self.preserve_clipboard) is not bool):
             raise ValueError("Invalid preference type")
         if type(self.polish_enabled) is not bool:
             raise ValueError(tr("Invalid polishing setting", "无效的润色设置"))

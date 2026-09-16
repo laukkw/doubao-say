@@ -175,7 +175,7 @@ class DoubaoInputApp(Gtk.Application):
 
     def _build(self) -> None:
         self._overlay = Overlay(self.app_state)
-        self._injector = Injector()
+        self._injector = Injector(preserve_clipboard=self.settings.preserve_clipboard)
         self._delivery = Delivery(GLib.timeout_add, focused_target,
             lambda text, target, cancelled: self._injector.inject(text, expected_target=target, cancelled=cancelled),
             lambda target, cancelled: self._injector.send_enter(expected_target=target, cancelled=cancelled),
@@ -315,6 +315,7 @@ class DoubaoInputApp(Gtk.Application):
             self._triggers.configure(value, strict=strict)
             self._audio_capture.device = value.microphone
             self._overlay.reduced_motion = value.reduced_motion
+            self._injector.preserve_clipboard = value.preserve_clipboard
 
         apply_preferences(previous, settings,
             lambda value: apply_runtime(value, True),

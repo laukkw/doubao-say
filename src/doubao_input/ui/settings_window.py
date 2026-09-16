@@ -117,6 +117,12 @@ class SettingsWindow:
         button(tr("Preview appearance", "预览外观"), preview)
 
         section(tr("Account & privacy", "账号与隐私"))
+        self.clipboard = row(tr("Preserve clipboard; skip CopyQ history",
+                                "保留剪贴板，跳过 CopyQ 历史"),
+                             Gtk.Switch(active=settings.preserve_clipboard))
+        box.append(Gtk.Label(xalign=0, wrap=True, label=tr(
+            "Requires native X11, python-xlib and a running CopyQ. Restores original formats after the target reads the text. Explicit Copy still changes the clipboard.",
+            "需要原生 X11、python-xlib 和运行中的 CopyQ。目标读取文字后恢复原格式；主动点击复制仍会更新剪贴板。")))
         box.append(Gtk.Label(xalign=0, wrap=True, label=tr(
             "Doubao receives audio during dictation and voice tests. Microphone checks stay local. No recording files or transcript history are saved. Recent text stays in memory until cleared or the app exits.",
             "听写和语音测试会向豆包发送音频，麦克风检查仅在本机进行。不保存录音文件和转写历史，最近文字仅在内存保留，清除或退出后消失。")))
@@ -171,6 +177,7 @@ class SettingsWindow:
         self.double.connect("value-changed", self._changed)
         self.microphone.connect("notify::selected", self._changed)
         self.motion.connect("notify::active", self._changed)
+        self.clipboard.connect("notify::active", self._changed)
 
     def _value(self):
         return replace(self._settings,
@@ -182,7 +189,8 @@ class SettingsWindow:
             double_enter=self.enter.get_active(),
             autostart=self.autostart.get_active(),
             microphone=self.sources[self.microphone.get_selected()][0],
-            reduced_motion=self.motion.get_active())
+            reduced_motion=self.motion.get_active(),
+            preserve_clipboard=self.clipboard.get_active())
 
     def _restore_controls(self):
         self._updating = True
@@ -195,6 +203,7 @@ class SettingsWindow:
             self.microphone.set_selected(
                 [key for key, _ in self.sources].index(self._settings.microphone))
             self.motion.set_active(self._settings.reduced_motion)
+            self.clipboard.set_active(self._settings.preserve_clipboard)
         finally:
             self._updating = False
 

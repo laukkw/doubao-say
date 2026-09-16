@@ -24,6 +24,9 @@ dependencies = [
     "evdev>=1.4",
 ]
 
+[project.optional-dependencies]
+x11 = ["python-xlib>=0.33"]
+
 [project.urls]
 "Homepage" = "https://github.com/quanru/doubao-say"
 "Issues" = "https://github.com/quanru/doubao-say/issues"

@@ -23,6 +23,7 @@ import time
 from typing import Optional
 
 from doubao_input.doubao.host_tools import command_candidates
+from doubao_input.i18n import tr
 from doubao_input.inject.target import focused_target, is_x11, x11_window
 
 logger = logging.getLogger(__name__)
@@ -71,23 +72,46 @@ def active_window_needs_shift() -> bool:
 class Injector:
     """Inject text into the currently-focused input field."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, preserve_clipboard=False) -> None:
         self._lock = threading.Lock()
         self._ui = None  # evdev.UInput
+        self.preserve_clipboard = preserve_clipboard
+        self.last_error = ""
 
     # ---- public ----
 
     def inject(self, text: str, use_shift: bool | None = None, *, expected_target=None, cancelled=lambda: False) -> bool:
         """Copy text to clipboard then synthesize Ctrl+V (or Ctrl+Shift+V)."""
+        self.last_error = ""
         if not text or cancelled():
             return False
         if expected_target and focused_target() != expected_target:
+            logger.info("Paste skipped: focus changed before preparation")
             return False
         if use_shift is None:
             use_shift = active_window_needs_shift()
         with self._lock:
             if cancelled():
                 return False
+            if self.preserve_clipboard:
+                try:
+                    from doubao_input.inject.clipboard import PreservedClipboard
+                    if not is_x11():
+                        raise RuntimeError(tr("Clipboard protection requires native X11 and CopyQ.",
+                                              "剪贴板保护需要原生 X11 和 CopyQ。"))
+                    with PreservedClipboard(text, expected_target) as clipboard:
+                        if cancelled() or focused_target() != expected_target:
+                            logger.info("Paste skipped: cancelled or focus changed after clipboard preparation")
+                            return False
+                        if not self._simulate_paste(use_shift=use_shift, cancelled=cancelled):
+                            return False
+                        return clipboard.wait(cancelled)
+                except Exception as error:
+                    self.last_error = str(error) if isinstance(error, (RuntimeError, ValueError)) else tr(
+                        "Clipboard protection unavailable. Check that CopyQ is running and python-xlib is installed.",
+                        "剪贴板保护不可用，请确认 CopyQ 正在运行且已安装 python-xlib。")
+                    logger.error("Protected paste failed (%s)", type(error).__name__)
+                    return False
             ok_copy = self._copy_to_clipboard(text)
             if not ok_copy:
                 logger.error("clipboard copy failed; cannot inject")
