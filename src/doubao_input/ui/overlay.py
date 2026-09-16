@@ -16,6 +16,7 @@ from html import escape
 from pathlib import Path
 from typing import TYPE_CHECKING
 from doubao_input.i18n import tr
+from doubao_input.inject.target import is_x11
 from doubao_input.ui.voice_motion import VoiceMotion
 from doubao_input.product import VERSION
 
@@ -241,8 +242,13 @@ class Overlay:
         win.set_can_focus(False)
         win.add_css_class("doubao-overlay")
 
-        # Layer-shell must be initialized before the window is realized.
-        if Gtk4LayerShell is not None:
+        # Configure before mapping so the overlay never takes the paste target's focus.
+        if is_x11():
+            gi.require_version("GdkX11", "4.0")
+            from gi.repository import GdkX11
+            win.connect("realize", lambda window: GdkX11.X11Surface.set_user_time(
+                window.get_surface(), 0))
+        elif Gtk4LayerShell is not None:
             try:
                 Gtk4LayerShell.init_for_window(win)
                 Gtk4LayerShell.set_namespace(win, "doubao-say-overlay")

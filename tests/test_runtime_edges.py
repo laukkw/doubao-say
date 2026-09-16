@@ -149,8 +149,9 @@ class InjectorEdgesTest(TestCase):
 
     def test_clipboard_falls_back_to_xclip(self):
         instance = Injector()
-        with patch("doubao_input.inject.injector.command_candidates",
-                   side_effect=lambda tool: [[tool]]), \
+        with patch.dict("os.environ", {"WAYLAND_DISPLAY": "wayland-0"}), \
+                patch("doubao_input.inject.injector.command_candidates",
+                      side_effect=lambda tool: [[tool]]), \
                 patch("subprocess.run", side_effect=[OSError, SimpleNamespace()]):
             self.assertTrue(instance._copy_to_clipboard("中文"))
         with patch("doubao_input.inject.injector.command_candidates", return_value=[]):

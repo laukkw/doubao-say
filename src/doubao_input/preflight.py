@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import shutil
 
+from doubao_input.inject.target import is_x11
+
 
 def check_runtime():
     results = {}
@@ -21,7 +23,8 @@ def check_runtime():
             results[namespace] = True
         except (ImportError, OSError, ValueError):
             results[namespace] = False
-    for command in ("pw-record", "pw-dump", "wl-copy"):
+    clipboard_tools = ("xdotool", "xclip") if is_x11() else ("wl-copy",)
+    for command in ("pw-record", "pw-dump", *clipboard_tools):
         results[command] = shutil.which(command) is not None
     return results
 

@@ -65,6 +65,9 @@ fi
 
 packages=(python python-gobject python-cairo gtk4 gtk4-layer-shell webkitgtk-6.0
           pipewire wl-clipboard portaudio)
+if [[ -n ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} && ${XDG_SESSION_TYPE:-} != wayland && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  packages+=(xdotool xclip)
+fi
 if ! $BUNDLE; then
   packages+=(python-sounddevice python-websockets python-evdev)
 fi
