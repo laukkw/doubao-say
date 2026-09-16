@@ -52,6 +52,40 @@ class SessionTest(unittest.TestCase):
         if session.loop:
             self.assertTrue(session.loop.is_closed())
 
+    def test_modern_connection_explicitly_disables_proxy(self):
+        socket = FakeSocket()
+        options = {}
+
+        def connect(url, *, additional_headers, proxy=True, **kwargs):
+            options.update(proxy=proxy, headers=additional_headers)
+            return socket
+
+        client = self.client(socket)
+        client._connect_factory = connect
+        client.connect(self.params)
+        session = client._session
+        self.assertTrue(socket.entered.wait(2))
+        self.stop(client, session)
+        self.assertIsNone(options["proxy"])
+        self.assertIn("Cookie", options["headers"])
+        self.assertIn("Origin", options["headers"])
+
+    def test_legacy_connection_does_not_receive_unsupported_proxy_option(self):
+        socket = FakeSocket()
+        options = {}
+
+        def connect(url, *, extra_headers, open_timeout, close_timeout, max_size):
+            options.update(headers=extra_headers)
+            return socket
+
+        client = self.client(socket)
+        client._connect_factory = connect
+        client.connect(self.params)
+        session = client._session
+        self.assertTrue(socket.entered.wait(2))
+        self.stop(client, session)
+        self.assertIn("Cookie", options["headers"])
+
     def test_cancel_during_handshake_closes_loop(self):
         socket = FakeSocket(block_connect=True)
         client = self.client(socket)

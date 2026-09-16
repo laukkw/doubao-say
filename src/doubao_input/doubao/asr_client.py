@@ -120,7 +120,7 @@ class ASRClient:
             factory = self._connect_factory or _load_websockets().connect
             headers = {"Cookie": params.cookie_header, "Origin": ORIGIN}
             async with factory(self._build_url(params), open_timeout=5, close_timeout=3,
-                               max_size=2**20, **_websocket_header_kwargs(factory, headers)) as ws:
+                               max_size=2**20, **_websocket_connect_kwargs(factory, headers)) as ws:
                 with self._lock:
                     if session.cancelled:
                         return
@@ -255,9 +255,13 @@ def _load_websockets():
     return websockets
 
 
-def _websocket_header_kwargs(connect_func, headers: dict[str, str]) -> dict:
+def _websocket_connect_kwargs(connect_func, headers: dict[str, str]) -> dict:
+    """Connect directly; older websockets versions have no automatic proxy support."""
     try:
         params = inspect.signature(connect_func).parameters
     except (TypeError, ValueError):
-        return {"additional_headers": headers}
-    return {"additional_headers" if "additional_headers" in params else "extra_headers": headers}
+        return {"additional_headers": headers, "proxy": None}
+    kwargs = {"additional_headers" if "additional_headers" in params else "extra_headers": headers}
+    if "proxy" in params:
+        kwargs["proxy"] = None
+    return kwargs
