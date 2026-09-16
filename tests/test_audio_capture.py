@@ -1,4 +1,5 @@
 import unittest
+from array import array
 import os
 import subprocess
 import sys
@@ -8,6 +9,27 @@ from doubao_input.doubao.audio_capture import AudioCapture
 
 
 class AudioCallbacksTest(unittest.TestCase):
+    def test_dc_offset_does_not_count_as_audio_level_or_change_sent_pcm(self):
+        for samples, expected in (([10000] * 16, 0), ([6000, 10000] * 8, 2000 / 32768)):
+            with self.subTest(expected=expected):
+                data = array("h", samples).tobytes()
+                audio, rms = Mock(), Mock()
+                AudioCapture._dispatch_audio(data, audio, rms)
+                audio.assert_called_once_with(data)
+                self.assertAlmostEqual(rms.call_args.args[0], expected)
+
+    def test_x11_uses_pipewire_node_identifier_from_device_picker(self):
+        capture = AudioCapture()
+        capture.device = "alsa_input.desk_mic"
+        with patch.dict("os.environ", {"DISPLAY": ":test"}, clear=True), \
+             patch("doubao_input.doubao.audio_capture.shutil.which", return_value="/usr/bin/pw-record"), \
+             patch("doubao_input.doubao.audio_capture.subprocess.Popen") as process, \
+             patch("doubao_input.doubao.audio_capture.threading.Thread"):
+            capture.start(Mock())
+            command = process.call_args.args[0]
+            self.assertEqual(command[command.index("--target") + 1], "alsa_input.desk_mic")
+        capture.stop()
+
     def test_finish_drains_real_pipe_and_joins_reader(self):
         # A synthetic producer, not pw-record: no microphone or network access.
         producer = subprocess.Popen(
@@ -92,7 +114,7 @@ class AudioCallbacksTest(unittest.TestCase):
         default, override, audio = Mock(), Mock(), Mock()
         capture = AudioCapture(on_rms=default)
         def emit_first_block():
-            capture._audio_callback(b"\x00\x40" * 4, 4, None, None)
+            capture._audio_callback(b"\x00\xc0\x00\x40" * 2, 4, None, None)
         with patch.dict("os.environ", {"WAYLAND_DISPLAY": "test"}), \
              patch("doubao_input.doubao.audio_capture.shutil.which", return_value="pw-record"), \
              patch.object(capture, "_start_pipewire", side_effect=emit_first_block):

@@ -18,6 +18,7 @@ import os
 import select
 import shutil
 import subprocess
+import time
 from typing import Any
 
 from doubao_input.doubao.config import AUDIO_BLOCKSIZE, AUDIO_CHANNELS, AUDIO_SAMPLE_RATE
@@ -38,6 +39,10 @@ class AudioCapture:
         self._reader = None
         self._stop_event = threading.Event()
         self._reader_failed = threading.Event()
+        self._started_at = 0.0
+        self._bytes_received = 0
+        self._peak = self._window_peak = 0.0
+        self._next_level_at = AUDIO_SAMPLE_RATE * 2
 
     @property
     def is_capturing(self) -> bool:
@@ -56,12 +61,15 @@ class AudioCapture:
         if self._process is not None:
             self.stop()
 
+        self._started_at = time.monotonic()
+        self._bytes_received = 0
+        self._peak = self._window_peak = 0.0
+        self._next_level_at = AUDIO_SAMPLE_RATE * 2
         self._on_audio_data = on_audio_data
         self._on_rms = on_rms if on_rms is not None else self._default_on_rms
 
-        # Native PipeWire capture avoids PortAudio's blocking stop/drain on
-        # suspended Wayland audio graphs. Keep sounddevice for other desktops.
-        if os.environ.get("WAYLAND_DISPLAY") and shutil.which("pw-record"):
+        # The device picker uses PipeWire node names on both X11 and Wayland.
+        if shutil.which("pw-record"):
             self._start_pipewire()
             return
 
@@ -89,6 +97,9 @@ class AudioCapture:
 
     def stop(self, *, drain=False) -> None:
         """Abort capture by default; normal completion must use finish()."""
+        if self._process is not None or self._stream is not None:
+            logger.info("Microphone stop requested: bytes=%d peak_ac_rms=%.4f drain=%s",
+                        self._bytes_received, self._peak, drain)
         if self._process is not None:
             process, self._process = self._process, None
             if not drain:
@@ -137,7 +148,7 @@ class AudioCapture:
         def emit(data):
             # A late reader must never pick up callbacks from a newer capture.
             if not stop_event.is_set():
-                self._dispatch_audio(data, on_audio, on_rms)
+                self._record_audio(data, on_audio, on_rms)
         def read_audio():
             pending = b""
             try:
@@ -172,24 +183,40 @@ class AudioCapture:
             logger.warning("Audio callback status: %s", status)
         # indata is already int16 LE bytes from RawInputStream
         data = bytes(indata)
-        self._dispatch_audio(data, self._on_audio_data, self._on_rms)
+        self._record_audio(data, self._on_audio_data, self._on_rms)
+
+    def _record_audio(self, data, on_audio, on_rms):
+        if not self._bytes_received:
+            logger.info("First microphone audio after %.0f ms",
+                        (time.monotonic() - self._started_at) * 1000)
+        self._bytes_received += len(data)
+        def measure(rms):
+            self._peak = max(self._peak, rms)
+            self._window_peak = max(self._window_peak, rms)
+            if self._bytes_received >= self._next_level_at:
+                logger.info("Microphone %.1fs captured: window_peak_ac_rms=%.4f",
+                            self._bytes_received / (AUDIO_SAMPLE_RATE * 2), self._window_peak)
+                self._window_peak = 0.0
+                self._next_level_at = self._bytes_received + AUDIO_SAMPLE_RATE * 2
+            if on_rms:
+                on_rms(rms)
+        self._dispatch_audio(data, on_audio, measure)
 
     @staticmethod
     def _dispatch_audio(data, on_audio_data, on_rms):
         if on_audio_data:
             on_audio_data(data)
         if on_rms:
-            # RMS in [0,1], normalized by 32768.
-            # Compute on int16 view (cheap, ~256ms chunks at 16kHz).
+            # Measure AC energy: a DC-biased microphone must not look like speech.
+            # The PCM delivered to ASR is unchanged.
             try:
                 import array
                 a = array.array("h")
                 a.frombytes(data)
                 if a:
-                    s = 0
-                    for v in a:
-                        s += v * v
-                    rms = (s / len(a)) ** 0.5 / 32768.0
+                    mean = sum(a) / len(a)
+                    variance = sum(v * v for v in a) / len(a) - mean * mean
+                    rms = max(0.0, variance) ** 0.5 / 32768.0
                 else:
                     rms = 0.0
             except Exception:

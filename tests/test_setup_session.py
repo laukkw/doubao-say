@@ -17,7 +17,8 @@ class SetupSessionTest(TestCase):
     def test_old_mic_hide_cannot_hide_next_check(self):
         self.session.check_microphone()
         first_finish, first_hide = [item[1] for item in self.timers]
-        self.audio.start.call_args.kwargs["on_rms"](0.1)
+        for _ in range(3):
+            self.audio.start.call_args.kwargs["on_rms"](0.1)
         first_finish()
         self.assertTrue(self.session.microphone_ok)
         self.session.check_microphone()
@@ -28,6 +29,14 @@ class SetupSessionTest(TestCase):
         self.overlay.hide.assert_not_called()
         self.audio.stop.assert_not_called()
         self.assertTrue(self.session.microphone_active)
+
+    def test_startup_transient_alone_cannot_pass_microphone_check(self):
+        self.session.check_microphone()
+        rms = self.audio.start.call_args.kwargs["on_rms"]
+        for value in (0.4, 0.3, 0.001, 0.001, 0.001):
+            rms(value)
+        self.timers[0][1]()
+        self.assertFalse(self.session.microphone_ok)
 
     def test_old_preview_hide_cannot_hide_voice_test(self):
         self.session.show_appearance()

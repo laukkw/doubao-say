@@ -1,7 +1,9 @@
 """Own onboarding microphone/voice tests and temporary appearance previews."""
 from enum import Enum, auto
+import math
 import threading
 
+from doubao_input.doubao.config import AUDIO_BLOCKSIZE, AUDIO_SAMPLE_RATE
 from doubao_input.i18n import tr
 from doubao_input.timers import TimerScope
 
@@ -84,14 +86,19 @@ class SetupSession:
         cancelled = self._audio_cancelled = threading.Event()
         peak = 0.0
         received = False
+        blocks = 0
+        # Device startup can generate a loud transient without any acoustic input.
+        warmup_blocks = math.ceil(0.5 * AUDIO_SAMPLE_RATE / AUDIO_BLOCKSIZE)
         lock = threading.Lock()
 
         def on_rms(value):
-            nonlocal peak, received
+            nonlocal peak, received, blocks
             if cancelled.is_set():
                 return
             with lock:
-                peak, received = max(peak, value), True
+                blocks += 1
+                if blocks > warmup_blocks:
+                    peak, received = max(peak, value), True
             self.overlay.push_rms(value)  # Overlay marshals audio callbacks onto GTK.
 
         self.feedback(tr("Speak normally for three seconds. This check stays on your device.",
@@ -116,7 +123,8 @@ class SetupSession:
             self.mode = SetupMode.IDLE
             with lock:
                 self.microphone_ok = received and peak > 0.003
-            message = tr("Microphone is working. Continue to the trigger key step.", "麦克风工作正常，请继续设置快捷键。")
+            message = tr("Input signal detected. Continue to the voice test to verify speech recognition.",
+                         "已检测到输入信号，请继续试说验证语音识别。")
             if not self.microphone_ok:
                 message = tr("No audible input. Unmute or select the correct microphone and retry.",
                              "未检测到有效声音，请取消静音或选择正确的麦克风后重试。")
