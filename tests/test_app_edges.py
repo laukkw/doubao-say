@@ -111,9 +111,12 @@ class AppDeliveryEdgesTest(TestCase):
 
     def test_partial_recovery_preview_and_normal_modes(self):
         preview = SimpleNamespace(_enter_after_paste=True, _preview_testing=True,
-                                  _control=Mock())
+                                  _control=Mock(), recent=RecentResult(), _notify_recovery=Mock())
         DoubaoInputApp._recover_partial(preview, "partial")
         preview._control.set_preview.assert_called_once_with("partial")
+        self.assertEqual(preview.recent.text, "partial")
+        preview._control.set_result.assert_called_once()
+        self.assertFalse(preview._enter_after_paste)
         normal = SimpleNamespace(_enter_after_paste=True, _preview_testing=False,
                                  recent=RecentResult(), _control=Mock(), _notify_recovery=Mock())
         DoubaoInputApp._recover_partial(normal, "partial")

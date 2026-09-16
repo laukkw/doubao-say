@@ -11,6 +11,14 @@ from doubao_input.ui.polish_settings import PolishSettings
 
 
 class SetupActionsTest(unittest.TestCase):
+    def test_result_and_error_survive_before_first_window_open(self):
+        control = ControlWindow(Mock(), Mock(), Mock(), Mock(), actions=Mock())
+        control.set_result("kept words", "not pasted")
+        control.set_feedback("network timeout")
+        self.assertEqual(control._last_result, ("kept words", "not pasted"))
+        self.assertEqual(control._last_feedback, "network timeout")
+        self.assertIsNone(control.window)
+
     def test_hiding_preview_cancels_before_hiding(self):
         events = []
         actions = SimpleNamespace(is_preview_testing=lambda: True,

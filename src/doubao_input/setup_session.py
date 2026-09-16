@@ -16,8 +16,10 @@ class SetupMode(Enum):
 
 
 class SetupSession:
-    def __init__(self, audio, overlay, feedback, preview, cancel_voice, schedule, cancel):
+    def __init__(self, audio, overlay, feedback, preview, cancel_voice, schedule, cancel,
+                 *, changed=lambda: None):
         self.audio, self.overlay = audio, overlay
+        self.changed = changed
         self.feedback, self.preview = feedback, preview
         self._cancel_voice = cancel_voice
         self._timers = TimerScope(schedule, cancel)
@@ -83,6 +85,7 @@ class SetupSession:
         self.dismiss()
         self.microphone_ok = False
         self.mode = SetupMode.MICROPHONE
+        self.changed()
         cancelled = self._audio_cancelled = threading.Event()
         peak = 0.0
         received = False
@@ -128,6 +131,7 @@ class SetupSession:
             if not self.microphone_ok:
                 message = tr("No audible input. Unmute or select the correct microphone and retry.",
                              "未检测到有效声音，请取消静音或选择正确的麦克风后重试。")
+            self.changed()
             self.feedback(message)
             self.overlay.set_text(tr("Microphone ready", "麦克风已就绪") if self.microphone_ok else
                                   tr("Input is too quiet", "输入音量过低"))

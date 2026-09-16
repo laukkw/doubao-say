@@ -224,15 +224,19 @@ class DoubaoInputApp(Gtk.Application):
                 save_polish=self._save_polish,
                 test_polish=self._test_polish,
                 apply_microphone=self._apply_microphone,
+                copy_recent=self._copy_recent,
+                retry_recent=self._retry_recent,
+                clear_recent=self._clear_recent,
             ),
         )
         self._update_checker = UpdateChecker(GLib.idle_add, self._update_available)
         self._update_checker.check()
         self._update_timer = GLib.timeout_add_seconds(3600, self._check_updates)
 
+        self.app_state.connect("error-message-changed", self._recording_error)
         self._setup_session = SetupSession(self._audio_capture, self._overlay,
             self._control.set_feedback, self._control.set_preview, tm.handle_cancel,
-            GLib.timeout_add, GLib.source_remove)
+            GLib.timeout_add, GLib.source_remove, changed=self._control.refresh)
         self._escape_guard = EscapeGuard(lambda message: self._control.set_feedback(
             tr("Could not protect Escape: ", "无法拦截 Esc：") + message))
         self._escape_timer = GLib.timeout_add(50, self._sync_escape)
@@ -497,6 +501,7 @@ class DoubaoInputApp(Gtk.Application):
                                           "已停止润色并使用原文。"))
 
     def _delivery_changed(self, status):
+        logger.info("Input delivery status=%s", status)
         self.recent.status = status
         messages = {
             "pending": tr("Pasting…", "正在粘贴…"),
@@ -506,12 +511,23 @@ class DoubaoInputApp(Gtk.Application):
             "enter_skipped": tr("Paste attempted; Enter skipped because the target changed or input failed.", "已尝试粘贴；因目标变化或输入失败，未发送回车。"),
             "cancelled": tr("Pending input cancelled.", "已取消待发送的输入。"),
         }
-        self._control.set_result(self.recent.text, messages.get(status, status))
-        self._control.set_feedback(messages.get(status, status))
+        message = messages.get(status, status)
+        detail = getattr(getattr(self, "_injector", None), "last_error", "")
+        if status == "failed" and detail:
+            message += " " + detail
+        self._control.set_result(self.recent.text, message)
+        self._control.set_feedback(message)
         if status != "pending":
             self._overlay.hide()
         if status in ("target_changed", "failed", "enter_skipped"):
             self._notify_recovery()
+
+    def _recording_error(self, _state, message):
+        if message:
+            notice = Gio.Notification.new(tr("Recognition failed", "识别未完成"))
+            notice.set_body(message)
+            notice.set_default_action("app.open-control")
+            self.send_notification("input-recovery", notice)
 
     def _notify_recovery(self):
         notice = Gio.Notification.new(tr("Doubao Say", "豆包说"))
@@ -524,7 +540,6 @@ class DoubaoInputApp(Gtk.Application):
         self._enter_after_paste = False
         if self._preview_testing:
             self._control.set_preview(text)
-            return
         self.recent.keep(text, "partial")
         self._control.set_result(self.recent.text, tr("Incomplete recognition — not pasted", "识别未完成，未粘贴"))
         self._notify_recovery()

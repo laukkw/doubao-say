@@ -19,3 +19,6 @@ class SetupActions:
     save_polish: Callable = lambda settings, key: None
     test_polish: Callable = lambda settings, key, done: None
     apply_microphone: Callable[[str], None] = lambda device: None
+    copy_recent: Callable[[], None] = lambda: None
+    retry_recent: Callable[[], None] = lambda: None
+    clear_recent: Callable[[], None] = lambda: None

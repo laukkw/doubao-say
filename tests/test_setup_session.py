@@ -14,6 +14,15 @@ class SetupSessionTest(TestCase):
         self.session = SetupSession(self.audio, self.overlay, self.feedback,
             self.preview, self.cancel_voice, schedule, Mock())
 
+    def test_microphone_result_refreshes_setup_readiness(self):
+        states = []
+        self.session.changed = lambda: states.append(self.session.microphone_ok)
+        self.session.check_microphone()
+        for _ in range(3):
+            self.audio.start.call_args.kwargs["on_rms"](0.1)
+        self.timers[0][1]()
+        self.assertEqual(states, [False, True])
+
     def test_old_mic_hide_cannot_hide_next_check(self):
         self.session.check_microphone()
         first_finish, first_hide = [item[1] for item in self.timers]

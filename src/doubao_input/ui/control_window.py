@@ -29,11 +29,15 @@ class ControlWindow:
         self._step_label = None
         self._next_button = None
         self._feedback = None
+        self._last_feedback = ""
         self._status_label = None
         self._preview = None
         self._voice_button = None
         self._result = None
         self._result_status = None
+        self._last_result = ("", "")
+        self._result_buttons = []
+        self._requirements = None
         self._summary_label = None
         self._account_status = None
         self._login_button = None
@@ -79,9 +83,15 @@ class ControlWindow:
         self._refresh()
 
     def set_result(self, text, status):
+        # Delivery can finish before the control window has ever been opened.
+        self._last_result = (text, status)
         if self._result:
             self._result.get_buffer().set_text(text)
             self._result_status.set_text(status)
+            self._result_box.set_expanded(bool(text))
+            self._result_box.set_visible(bool(text))
+            for button in self._result_buttons:
+                button.set_sensitive(bool(text))
 
     def set_update(self, info):
         self._update_info = info
@@ -107,6 +117,7 @@ class ControlWindow:
             self._update_button = None
 
     def set_feedback(self, text):
+        self._last_feedback = text
         if self._feedback:
             self._feedback.set_text(text)
 
@@ -161,9 +172,19 @@ class ControlWindow:
         self._voice_button.set_sensitive(logged_in and state != RecordingState.STOPPING)
         self._cancel_button.set_visible(testing and state != RecordingState.IDLE)
         if self._start_button:
-            ready = (summary.get("onboarding_complete") or
-                     (summary.get("microphone_ok") and summary.get("voice_test_ok")))
-            self._start_button.set_sensitive(logged_in and ready and not testing)
+            missing = [name for passed, name in (
+                (logged_in, tr("sign-in", "登录")),
+                (summary.get("microphone_ok"), tr("microphone check", "麦克风检查")),
+                (summary.get("key_code"), tr("trigger key", "快捷键")),
+                (summary.get("voice_test_ok"), tr("voice test", "语音测试")),
+            ) if not passed]
+            ready = summary.get("onboarding_complete") or not missing
+            self._start_button.set_sensitive(logged_in and ready and not testing
+                                             and state == RecordingState.IDLE)
+            self._requirements.set_text(
+                tr("Setup completed", "设置已完成") if summary.get("onboarding_complete") else
+                tr("Ready to finish setup", "可以完成设置") if not missing else
+                tr("Still needed: ", "尚未完成：") + ", ".join(missing))
         self._sync_navigation()
 
     def _ensure_window(self):
@@ -312,12 +333,36 @@ class ControlWindow:
         preview_scroll = Gtk.ScrolledWindow(min_content_height=110)
         preview_scroll.set_child(self._preview)
         voice.append(preview_scroll)
+        self._requirements = label("", secondary=True)
+        voice.append(self._requirements)
         self._start_button = button(
             voice, tr("Finish setup", "完成设置"),
             self._actions.complete_setup, True)
-        self._feedback = Gtk.Label(xalign=0, wrap=True, selectable=True)
+
+        self._result_box = Gtk.Expander(label=tr("Recent result", "最近识别结果"))
+        result_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self._result = Gtk.TextView(editable=False, wrap_mode=Gtk.WrapMode.WORD_CHAR,
+                                    left_margin=12, right_margin=12, top_margin=10, bottom_margin=10)
+        self._result.update_property([Gtk.AccessibleProperty.LABEL],
+                                     [tr("Recent recognition text", "最近识别文字")])
+        result_scroll = Gtk.ScrolledWindow(min_content_height=100, max_content_height=220)
+        result_scroll.set_child(self._result)
+        result_box.append(result_scroll)
+        self._result_status = label("", secondary=True)
+        result_box.append(self._result_status)
+        actions = Gtk.Box(spacing=8, homogeneous=True)
+        self._result_buttons = [
+            button(actions, tr("Copy", "复制"), self._actions.copy_recent),
+            button(actions, tr("Retry in 3 seconds", "三秒后重试"), self._actions.retry_recent),
+            button(actions, tr("Clear", "清除"), self._actions.clear_recent),
+        ]
+        result_box.append(actions)
+        self._result_box.set_child(result_box)
+        self.set_result(*self._last_result)
+        self._feedback = Gtk.Label(label=self._last_feedback, xalign=0, wrap=True, selectable=True)
         self._feedback.add_css_class("window-feedback")
-        content.append(self._feedback)
+        content.prepend(self._feedback)
+        content.prepend(self._result_box)
         button(content, tr("Quit application", "退出应用"), self._on_quit)
         if self._actions.summary().get("onboarding_complete"):
             self._stack.set_visible_child_name("voice")
