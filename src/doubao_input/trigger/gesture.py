@@ -3,8 +3,10 @@
 
 class KeyGesture:
     def __init__(self, start, stop, toggle, enter, schedule, cancel,
-                 hold_ms=350, double_ms=300, double_enter=True):
+                 hold_ms=350, double_ms=300, double_enter=True,
+                 prepare=lambda: None, discard=lambda: None):
         self.start, self.stop, self.toggle, self.enter = start, stop, toggle, enter
+        self.prepare, self.discard = prepare, discard
         self.schedule, self.cancel = schedule, cancel
         self.down = False
         self.held = False
@@ -20,6 +22,8 @@ class KeyGesture:
         self.down = True
         self.held = False
         self.second = self.tap_timer is not None
+        if not self.second:
+            self.prepare()
         if self.tap_timer is not None:
             self.cancel(self.tap_timer)
             self.tap_timer = None
@@ -43,6 +47,7 @@ class KeyGesture:
             self.stop()
         elif self.second:
             self.second = False
+            self.discard()
             self.enter()
         else:
             if self.double_enter:
@@ -56,6 +61,7 @@ class KeyGesture:
                 self.cancel(timer)
         self.hold_timer = self.tap_timer = None
         self.down = self.held = self.second = False
+        self.discard()
 
     def _tap(self):
         self.tap_timer = None

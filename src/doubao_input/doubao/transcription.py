@@ -41,6 +41,7 @@ class TranscriptionManager:
         self.audio_capture = AudioCapture()
 
         self.using_cached_params = False
+        self.prepared = False
         self.awaiting_final_result = False
         self.safety_timer_id: int | None = None
         self.final_result_timer_id: int | None = None
@@ -83,13 +84,27 @@ class TranscriptionManager:
     def _later(self, milliseconds, callback):
         return GLib.timeout_add(milliseconds, self._deliver, self._generation, callback)
 
+    def prepare_recording(self) -> None:
+        """Buffer from key-down locally; gesture confirmation alone opens ASR."""
+        if (self.app_state.recording_state == RecordingState.IDLE
+                and self.app_state.login_status == LoginStatus.LOGGED_IN):
+            self._start_recording(defer_connection=True)
+
+    def discard_prepared(self) -> None:
+        """A double-tap or cancelled gesture must never upload buffered audio."""
+        if self.prepared:
+            self.handle_cancel()
+
     # --- Toggle ---
 
     def handle_toggle(self) -> None:
         """Called on GTK main thread from hotkey manager.
         Kept for compatibility with the original toggle-style API."""
         state = self.app_state.recording_state
-        if state == RecordingState.IDLE:
+        if self.prepared:
+            self.prepared = False
+            self._connect_asr()
+        elif state == RecordingState.IDLE:
             self._start_recording()
         elif state in (RecordingState.STARTING, RecordingState.RECORDING):
             self._stop_recording()
@@ -101,8 +116,8 @@ class TranscriptionManager:
         """Right-Alt down: start recording (if not already recording)."""
         import time as _t
         self._press_started_at = _t.monotonic()
-        if self.app_state.recording_state == RecordingState.IDLE:
-            self._start_recording()
+        if self.prepared or self.app_state.recording_state == RecordingState.IDLE:
+            self.handle_toggle()
 
     def handle_release(self) -> None:
         """Right-Alt up: stop recording and inject (unless a too-brief tap)."""
@@ -118,18 +133,19 @@ class TranscriptionManager:
             return
         self._stop_recording()
 
-    def _start_recording(self) -> None:
+    def _start_recording(self, *, defer_connection=False) -> None:
         if self.app_state.login_status != LoginStatus.LOGGED_IN:
             logger.warning("Not logged in, showing login window")
             if self.on_show_login:
                 self.on_show_login()
             return
 
-        logger.info("Starting recording...")
+        logger.info("Preparing local audio on key-down" if defer_connection else "Starting recording...")
+        self.prepared = defer_connection
         self._generation += 1
         self._stopped_at = None
         self._wire_asr_callbacks()
-        self.asr_client.prepare()
+        send_audio = self.asr_client.prepare()
         self._set_state(RecordingState.STARTING)
         self.app_state.transcription_text = ""
         self.app_state.error_message = None
@@ -138,7 +154,7 @@ class TranscriptionManager:
 
         # Start audio immediately (buffered in ASR client until WS connects)
         try:
-            self.audio_capture.start(on_audio_data=self.asr_client.send_audio)
+            self.audio_capture.start(on_audio_data=send_audio)
         except Exception as e:
             logger.error("Audio capture failed: %s", e)
             self._reset_to_idle()
@@ -146,7 +162,11 @@ class TranscriptionManager:
                                               "麦克风启动失败，请检查输入设备和权限")
             return
 
-        # Try cached params first, fall back to WebView extraction
+        if not defer_connection:
+            self._connect_asr()
+
+    def _connect_asr(self) -> None:
+        # Keep the original session and queue, including audio from key-down.
         cached = ParamsStore.load()
         if cached:
             logger.info("Using cached ASR params")
@@ -302,6 +322,7 @@ class TranscriptionManager:
         self._reset_to_idle()
 
     def _reset_to_idle(self) -> bool:
+        self.prepared = False
         self._generation += 1
         self._cancel_final_result_timer()
         if self.safety_timer_id is not None:

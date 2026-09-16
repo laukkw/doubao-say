@@ -75,6 +75,25 @@ class AppLifecycleEdgesTest(TestCase):
 
 
 class AppDeliveryEdgesTest(TestCase):
+    def test_gesture_confirmation_preserves_key_down_target(self):
+        tm = Mock(prepared=False)
+        app = SimpleNamespace(
+            _tm=tm, _mic_test_running=False, _triggers=Mock(capturing=False),
+            _recovery_timer=None, _paste_pending=False, _preview_testing=False,
+            _setup_session=Mock(), _reset_prepolish=Mock(),
+            app_state=SimpleNamespace(recording_state=RecordingState.IDLE))
+        with patch("doubao_input.app.focused_target", return_value="original") as target:
+            DoubaoInputApp._voice_start(app, prepare=True)
+            tm.prepare_recording.assert_called_once()
+            tm.handle_toggle.assert_not_called()
+            tm.prepared = True
+            app.app_state.recording_state = RecordingState.STARTING
+            target.return_value = "another-window"
+            DoubaoInputApp._voice_start(app)
+            self.assertEqual(app._target, "original")
+            target.assert_called_once()
+            tm.handle_toggle.assert_called_once()
+
     def test_delivery_status_updates_ui_and_notifies_recovery(self):
         for status, notify in (("pending", False), ("failed", True), ("custom", False)):
             with self.subTest(status=status):

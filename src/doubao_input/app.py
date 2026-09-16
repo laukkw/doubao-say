@@ -243,6 +243,7 @@ class DoubaoInputApp(Gtk.Application):
         self._triggers = TriggerController(EvdevPtt, GLib.timeout_add, GLib.source_remove,
             escape_edge=self._escape_guard.edge,
             start=self._voice_start, stop=self._voice_stop, toggle=self._voice_toggle,
+            prepare=lambda: self._voice_start(prepare=True), discard=tm.discard_prepared,
             enter=self._voice_enter, cancel_input=self._cancel_input,
             debug_edge=self._debug_edge, error=lambda message: logger.warning("PTT error: %s", message))
 
@@ -325,11 +326,18 @@ class DoubaoInputApp(Gtk.Application):
 
     # ---- Voice commands (GTK main thread) ----
 
-    def _voice_start(self):
+    def _voice_start(self, *, prepare=False):
+        if prepare:
+            logger.info("Trigger press handled")
         if getattr(self, "_polish_mode", None) == "final" and self._polisher.busy:
-            self._cancel_polish(use_original=True)
+            if not prepare:
+                self._cancel_polish(use_original=True)
             return
         if self._mic_test_running or self._triggers.capturing or self._recovery_timer:
+            return
+        if self._tm.prepared:
+            if not prepare:
+                self._tm.handle_toggle()
             return
         if self.app_state.recording_state == RecordingState.IDLE and not self._paste_pending:
             if not self._preview_testing:
@@ -337,16 +345,24 @@ class DoubaoInputApp(Gtk.Application):
             self._enter_after_paste = False
             self._target = None if self._preview_testing else focused_target()
             self._reset_prepolish()
-            self._tm.handle_toggle()
+            if prepare:
+                self._tm.prepare_recording()
+            else:
+                self._tm.handle_toggle()
 
     def _voice_stop(self):
         if getattr(self, "_polish_mode", None) == "final" and self._polisher.busy:
             self._cancel_polish(use_original=True)
             return
-        if self.app_state.recording_state in (RecordingState.STARTING, RecordingState.RECORDING):
+        if self._tm.prepared:
+            self._tm.discard_prepared()
+        elif self.app_state.recording_state in (RecordingState.STARTING, RecordingState.RECORDING):
             self._tm.handle_toggle()
 
     def _voice_toggle(self):
+        if self._tm.prepared:
+            self._voice_start()
+            return
         if getattr(self, "_polish_mode", None) == "final" and self._polisher.busy:
             self._cancel_polish(use_original=True)
             return

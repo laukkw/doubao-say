@@ -21,14 +21,29 @@ class TriggerControllerTest(TestCase):
             self.readers.append(value)
             return value
         self.start, self.stop, self.toggle, self.enter, self.cancel = [Mock() for _ in range(5)]
+        self.prepare, self.discard = Mock(), Mock()
         self.control = TriggerController(reader, schedule, Mock(), start=self.start, stop=self.stop,
             toggle=self.toggle, enter=self.enter, cancel_input=self.cancel,
-            debug_edge=Mock(return_value=False), error=Mock())
+            debug_edge=Mock(return_value=False), error=Mock(), prepare=self.prepare, discard=self.discard)
         self.settings = Settings(doubao_key=100)
         self.control.configure(self.settings)
 
     def edge(self, code, pressed):
         self.readers[-1].callbacks["on_key"](code, pressed)
+
+    def test_matching_key_prepares_before_any_gesture_timer_fires(self):
+        self.edge(57, True)
+        self.prepare.assert_not_called()
+        self.edge(100, True)
+        self.prepare.assert_called_once()
+        self.start.assert_not_called()
+        self.toggle.assert_not_called()
+        self.control.cancel_gesture()
+        self.discard.assert_called_once()
+        self.prepare.reset_mock()
+        self.control.begin_capture(Mock())
+        self.edge(100, True)
+        self.prepare.assert_not_called()
 
     def test_capture_only_returns_after_release_and_restores_listener(self):
         result = Mock()

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 import inspect
 import json
@@ -93,13 +94,15 @@ class ASRClient:
                         connected=s.connected, messages=s.messages, results=s.results,
                         empty_results=s.empty_results, ignored=s.ignored)
 
-    def prepare(self) -> None:
-        """Begin buffering a new recording before microphone capture starts."""
+    def prepare(self) -> Callable[[bytes], None]:
+        """Begin a recording and return a PCM callback bound to this session."""
         self.disconnect()
         with self._lock:
             self._session = _Session()
             self._session.callbacks = {name: getattr(self, name) for name in (
                 "on_open", "on_result", "on_finish", "on_error", "on_auth_error")}
+            owner = self._session
+            return lambda data: self.send_audio(data, _owner=owner)
 
     def connect(self, params: ASRParams) -> None:
         params.validate()
@@ -221,8 +224,10 @@ class ASRClient:
         else:
             raise ConnectionError("ASR closed before recording ended")
 
-    def send_audio(self, data: bytes) -> None:
+    def send_audio(self, data: bytes, *, _owner: _Session | None = None) -> None:
         with self._lock:
+            if _owner is not None and self._session is not _owner:
+                return
             session = self._session
             if session is None or session.cancelled or not session.accepting:
                 return
