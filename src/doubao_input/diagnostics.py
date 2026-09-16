@@ -21,6 +21,7 @@ def report(settings, *, recording=False):
         "uinput_writable": os.access("/dev/uinput", os.W_OK),
         "commands": {n: bool(shutil.which(n)) for n in ("pw-record", "wl-copy", "hyprctl")},
         "packages": packages, "language": settings.language,
+        "recognition_provider": settings.asr_provider,
         "trigger_key": settings.doubao_key,
         "trigger_modifiers": list(settings.doubao_modifiers),
         "polishing_enabled": settings.polish_enabled,

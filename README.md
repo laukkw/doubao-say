@@ -2,8 +2,9 @@
 
 [简体中文](README.zh-CN.md)
 
-A standalone GTK4 voice-input application for Linux/Wayland, powered by Doubao
-cloud recognition. English by default. Settings offers **System / English /
+A standalone GTK4 voice-input application for Linux/Wayland. It uses Doubao
+web-account recognition by default and can optionally use the official Volcengine
+Seed ASR 2.0 API. English by default. Settings offers **System / English /
 简体中文** and saves each choice automatically. System follows the session's language preferences,
 uses Simplified Chinese for Chinese locales, and falls back to English otherwise.
 Optional Omarchy integration manages the **same application**, not another engine.
@@ -24,7 +25,9 @@ then finish onboarding. Removal differs from the offline archive. Do not mix bot
 
 Open **Doubao Say** from your application launcher:
 
-1. **Sign in** — open the Doubao web sign-in. Credentials stay on this device.
+1. **Recognition** — use the default Doubao web sign-in, or select
+   **Volcengine official API** in Settings and add your own speech API key.
+   Credentials stay on this device.
 2. **Microphone** — choose a PipeWire input, then run a three-second,
    device-only check with actionable feedback. Device changes save immediately.
 3. **Trigger key** — choose Fn, Ctrl, Alt or a function-key preset and it takes
@@ -33,6 +36,27 @@ Open **Doubao Say** from your application launcher:
 4. **Voice test** — speak into the real recognition engine. Results stay inside
    the app and overlay; this rehearsal never pastes or sends Enter. When it
    passes, choose **Finish setup** and use the trigger in another app.
+
+### Optional official Volcengine recognition
+
+Open **Settings → Recognition service**, select **Volcengine official API**, and
+enter the API key issued by the Volcengine Speech Recognition console. Changes
+save automatically. Use **Test API key** before the voice test. This backend uses
+the Seed ASR 2.0 bidirectional streaming endpoint and the hourly resource
+`volc.seedasr.sauc.duration`; PCM audio is uploaded while you speak, incremental
+text is returned live, and the final result arrives after recording stops.
+Volcengine bills usage to your account.
+
+The API key is stored in `~/.config/doubao-say/volcengine_api_key` (or the
+equivalent `XDG_CONFIG_HOME` path) with owner-only permissions. It is never added
+to settings, diagnostics, logs, bundles, or reports. Clearing credentials removes
+the key. Service activation and project access are managed in the Volcengine
+console; an HTTP 401 from **Test API key** normally means that account-side access
+is not ready yet.
+
+See [Doubao and the official Volcengine speech API](docs/volcengine-asr.md) for
+backend differences, new-console activation, bidirectional streaming limitations,
+and troubleshooting.
 
 ### Optional voice polishing
 
@@ -153,8 +177,10 @@ Automatic detection of every desktop shortcut conflict is not supported.
 
 ## Privacy and limitations
 
-This unofficial client sends microphone audio to Doubao while recording and
-depends on its web protocol. The microphone-only check does not upload audio.
+The default unofficial backend sends microphone audio to Doubao while recording
+and depends on its web protocol. The optional official backend sends it to
+Volcengine under the user's API account and terms. The microphone-only check does
+not upload audio.
 The hosted sign-in website controls its own language.
 When optional polishing is enabled, recognized text—including provisional text
 sent after a pause—is transmitted to the OpenAI-compatible endpoint configured by

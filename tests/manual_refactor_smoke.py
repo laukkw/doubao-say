@@ -15,6 +15,7 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import GLib, Gtk
 from doubao_input.app import DoubaoInputApp
 from doubao_input.i18n import set_language
+from doubao_input.doubao.volcengine_credentials import VolcengineCredentialsStore
 from doubao_input.settings import Settings, INPUT_METHODS, WAVEFORM_STYLES
 from doubao_input.ui.settings_window import SettingsWindow
 
@@ -50,8 +51,20 @@ def main():
             set_language(language)
             window = SettingsWindow(app._control.window, app.settings, app.apply_settings,
                 capture_key=app._begin_key_capture, cancel_capture=app._end_key_capture,
-                apply_key=app._apply_trigger_key)
+                apply_key=app._apply_trigger_key,
+                asr_has_key=app._official_has_key,
+                save_asr=app._save_official_key,
+                clear_asr=app._clear_official_key,
+                test_asr=app._test_official_asr)
             window.window.realize()
+            if language == "en":
+                window.asr_provider.set_selected(1)
+                window.asr_key.set_text("synthetic-official-key")
+                window._flush_asr_key()
+                assert app.settings.asr_provider == "volcengine"
+                assert VolcengineCredentialsStore.load().api_key == "synthetic-official-key"
+                assert window.asr_details.get_visible()
+                assert not window.login_button.get_visible()
             for index, style in enumerate(WAVEFORM_STYLES):
                 window.waveform_style.set_selected(index)
                 assert app.settings.waveform_style == style
@@ -120,7 +133,7 @@ def main():
         injector.return_value.inject.assert_called_once()
         assert not app._paste_pending
         assert not list(Path(directory).rglob("asr_params.json"))
-        print("PASS: real GTK EN/ZH settings close/save, capture cleanup, rehearsal routing, worker/main-loop completion")
+        print("PASS: real GTK EN/ZH and official-provider settings, capture cleanup, rehearsal routing, worker/main-loop completion")
 
 
 if __name__ == "__main__":
