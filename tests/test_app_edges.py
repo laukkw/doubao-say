@@ -1,3 +1,4 @@
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -135,6 +136,20 @@ class AppDeliveryEdgesTest(TestCase):
 
 
 class AppSetupEdgesTest(TestCase):
+    def test_polish_save_preserves_preferences_changed_after_panel_opened(self):
+        stale = Settings()
+        current = replace(stale, doubao_key=127, language="zh_CN",
+                          microphone="desk-mic", onboarding_complete=True)
+        app = SimpleNamespace(settings=current, _polish_key=lambda: "",
+                              apply_settings=Mock())
+        # Unmapping the polishing panel saves its snapshot, even without edits.
+        DoubaoInputApp._save_polish(app, stale)
+        app.apply_settings.assert_called_with(current)
+        edited = replace(stale, polish_model="new-model", polish_prompt_zh="新提示词")
+        DoubaoInputApp._save_polish(app, edited)
+        app.apply_settings.assert_called_with(replace(
+            current, polish_model="new-model", polish_prompt_zh="新提示词"))
+
     def test_microphone_selection_uses_normal_settings_pipeline(self):
         app = SimpleNamespace(settings=Settings(microphone=""), apply_settings=Mock())
         DoubaoInputApp._apply_microphone(app, "desk-mic")

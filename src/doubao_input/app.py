@@ -575,6 +575,11 @@ class DoubaoInputApp(Gtk.Application):
                 or bool(self._polisher and self._polisher.busy))
 
     def _save_polish(self, settings, api_key=None):
+        from dataclasses import replace
+        # The panel retains an older snapshot; it owns only polishing fields.
+        settings = replace(self.settings, polish_enabled=settings.polish_enabled,
+            polish_base_url=settings.polish_base_url, polish_model=settings.polish_model,
+            polish_prompt_zh=settings.polish_prompt_zh, polish_prompt_en=settings.polish_prompt_en)
         settings.validate()
         previous_key = self._polish_key()
         effective_key = api_key or previous_key
