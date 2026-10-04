@@ -1,0 +1,144 @@
+{
+  "before": [
+    {
+      "case": "before",
+      "mapped": true,
+      "above": false,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": []
+    }
+  ],
+  "after": [
+    {
+      "case": "after",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "bars",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "waves",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "ripples",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "basketball",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "bars-reduced",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "waves-reduced",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "ripples-reduced",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "basketball-reduced",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "polishing",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "transcribing",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "second-workspace",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    },
+    {
+      "case": "ordinary-target",
+      "mapped": true,
+      "above": true,
+      "active_retained": true,
+      "focus_retained": true,
+      "states": [
+        "_NET_WM_STATE_ABOVE"
+      ]
+    }
+  ]
+}
